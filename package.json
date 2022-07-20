@@ -1,0 +1,42 @@
+{
+	"name": "marketplace",
+	"version": "1.0.0",
+	"description": "NFT Marketplace",
+	"main": "index.js",
+	"scripts": {
+		"prepare": "husky install",
+		"ts:format": "prettier --write \"scripts/**/*.ts\" \"test/**/*.ts\"",
+		"ts:lint": "eslint --fix \"{scripts,test}/**/*.ts\"",
+		"test": "hardhat test"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/evercoinx/marketplace.git"
+	},
+	"keywords": [
+		"nft",
+		"marketplace"
+	],
+	"author": "Serge Grigorenko <xyz@evercloud.io>",
+	"license": "UNLICENSED",
+	"bugs": {
+		"url": "https://github.com/evercoinx/marketplace/issues"
+	},
+	"homepage": "https://github.com/evercoinx/marketplace#readme",
+	"dependencies": {
+		"@openzeppelin/contracts": "^4.7.1"
+	},
+	"devDependencies": {
+		"@nomicfoundation/hardhat-toolbox": "^1.0.2",
+		"@typescript-eslint/eslint-plugin": "^5.30.7",
+		"@typescript-eslint/parser": "^5.30.7",
+		"dotenv": "^16.0.1",
+		"eslint": "^8.20.0",
+		"eslint-config-prettier": "^8.5.0",
+		"eslint-plugin-prettier": "^4.2.1",
+		"hardhat": "^2.10.1",
+		"husky": "^8.0.1",
+		"prettier": "^2.7.1",
+		"prettier-plugin-solidity": "^1.0.0-dev.22"
+	}
+}
