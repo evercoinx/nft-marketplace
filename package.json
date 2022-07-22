@@ -2,11 +2,11 @@
 	"name": "marketplace",
 	"version": "1.0.0",
 	"description": "NFT Marketplace",
-	"main": "index.js",
 	"scripts": {
 		"prepare": "husky install",
-		"ts:format": "prettier --write \"scripts/**/*.ts\" \"test/**/*.ts\"",
-		"ts:lint": "eslint --fix \"{scripts,test}/**/*.ts\"",
+		"ts:format": "prettier --write \"scripts/**/*.ts\" \"tests/**/*.ts\"",
+		"ts:lint": "eslint --fix \"{scripts,tests}/**/*.ts\"",
+		"compile": "hardhat compile",
 		"test": "hardhat test"
 	},
 	"repository": {
