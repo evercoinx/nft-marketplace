@@ -8,7 +8,7 @@ import "hardhat/console.sol";
 error PriceMustBeAboveZero();
 error AlreadyListed(address tokenContract, uint256 tokenId);
 error NotOwner();
-error NotApprovedForMarketplace();
+error NotApprovedOperator();
 
 // error PriceNotMet(address tokenContract, uint256 tokenId, uint256 price);
 // error ItemNotForSale(address tokenContract, uint256 tokenId);
@@ -26,11 +26,7 @@ contract Marketplace is ReentrancyGuard {
 	mapping(address => mapping(uint256 => Listing)) private _listings;
 	// mapping(address => uint256) private _proceeds;
 
-	modifier notListed(
-		address tokenContract,
-		uint256 tokenId,
-		address owner
-	) {
+	modifier notListed(address tokenContract, uint256 tokenId) {
 		Listing memory listing = _listings[tokenContract][tokenId];
 		if (listing.price > 0) {
 			revert AlreadyListed(tokenContract, tokenId);
@@ -55,14 +51,14 @@ contract Marketplace is ReentrancyGuard {
 		address tokenContract,
 		uint256 tokenId,
 		uint256 price
-	) external notListed(tokenContract, tokenId, msg.sender) isOwner(tokenContract, tokenId, msg.sender) {
+	) external notListed(tokenContract, tokenId) isOwner(tokenContract, tokenId, msg.sender) {
 		if (price <= 0) {
 			revert PriceMustBeAboveZero();
 		}
 
 		IERC721 nft = IERC721(tokenContract);
 		if (nft.getApproved(tokenId) != address(this)) {
-			revert NotApprovedForMarketplace();
+			revert NotApprovedOperator();
 		}
 
 		_listings[tokenContract][tokenId] = Listing(price, msg.sender);

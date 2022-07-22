@@ -7,20 +7,20 @@ describe("Markeplace", function () {
 		const Marketplace = await ethers.getContractFactory("Marketplace");
 		const marketplace = await Marketplace.deploy();
 
-		const GameItem = await ethers.getContractFactory("GameItem");
-		const gameItem = await GameItem.deploy();
-		const [owner, player, player2] = await ethers.getSigners();
+		const TestItem = await ethers.getContractFactory("TestItem");
+		const testItem = await TestItem.deploy();
+		const [deployer, user, user2] = await ethers.getSigners();
 		const tokenId = 0;
 		const tokenPrice = ethers.utils.parseEther("0.1");
 
-		await gameItem.mint(player.address, "https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pYrDKEoiu");
+		await testItem.mint(user.address, "https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pYrDKEoiu");
 
 		return {
 			marketplace,
-			gameItem,
-			owner,
-			player,
-			player2,
+			testItem,
+			deployer,
+			user,
+			user2,
 			tokenId,
 			tokenPrice,
 		};
@@ -28,87 +28,89 @@ describe("Markeplace", function () {
 
 	describe("Item listings", function () {
 		describe("Validations", function () {
-			it("Should revert with the right error if the marketplace is not approved to list the item", async function () {
-				const { marketplace, gameItem, player, tokenId, tokenPrice } = await loadFixture(
+			it("Should revert with the right error if called from an non-owner account", async function () {
+				const { marketplace, testItem, user, user2, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
 
-				const promise = marketplace.connect(player).listItem(gameItem.address, tokenId, tokenPrice);
-				await expect(promise).to.be.revertedWithCustomError(marketplace, "NotApprovedForMarketplace");
-			});
+				await testItem.connect(user).approve(user2.address, tokenId);
 
-			it("Should revert with the right error if called with the price equal to zero", async function () {
-				const { marketplace, gameItem, player, tokenId } = await loadFixture(deployMarketplaceFixture);
-
-				await gameItem.connect(player).approve(marketplace.address, tokenId);
-
-				const promise = marketplace.connect(player).listItem(gameItem.address, tokenId, 0);
-				await expect(promise).to.be.revertedWithCustomError(marketplace, "PriceMustBeAboveZero");
-			});
-
-			it("Should revert with the right error if called from an account which is not the item owner", async function () {
-				const { marketplace, gameItem, player, player2, tokenId, tokenPrice } = await loadFixture(
-					deployMarketplaceFixture,
-				);
-
-				await gameItem.connect(player).approve(player2.address, tokenId);
-
-				const promise = marketplace.connect(player2).listItem(gameItem.address, tokenId, tokenPrice);
+				const promise = marketplace.connect(user2).listItem(testItem.address, tokenId, tokenPrice);
 				await expect(promise).to.be.revertedWithCustomError(marketplace, "NotOwner");
 			});
 
-			it("Should revert with the right error if the item has been already listed", async function () {
-				const { marketplace, gameItem, player, tokenId, tokenPrice } = await loadFixture(
+			it("Should revert with the right error if the marketplace is not an approved operator", async function () {
+				const { marketplace, testItem, user, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
 
-				await gameItem.connect(player).approve(marketplace.address, tokenId);
-				await marketplace.connect(player).listItem(gameItem.address, tokenId, tokenPrice);
-
-				const promise = marketplace.connect(player).listItem(gameItem.address, tokenId, tokenPrice);
-				await expect(promise).to.be.revertedWithCustomError(marketplace, "AlreadyListed");
+				const promise = marketplace.connect(user).listItem(testItem.address, tokenId, tokenPrice);
+				await expect(promise).to.be.revertedWithCustomError(marketplace, "NotApprovedOperator");
 			});
 
-			it("Shouldn't fail if called by the token owner with the right price", async function () {
-				const { marketplace, gameItem, player, tokenId, tokenPrice } = await loadFixture(
+			it("Should revert with the right error if the item has been already listed", async function () {
+				const { marketplace, testItem, user, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
 
-				await gameItem.connect(player).approve(marketplace.address, tokenId);
+				await testItem.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listItem(testItem.address, tokenId, tokenPrice);
 
-				const promise = marketplace.connect(player).listItem(gameItem.address, tokenId, tokenPrice);
+				const promise = marketplace.connect(user).listItem(testItem.address, tokenId, tokenPrice);
+				await expect(promise)
+					.to.be.revertedWithCustomError(marketplace, "AlreadyListed")
+					.withArgs(testItem.address, tokenId);
+			});
+
+			it("Should revert with the right error if called with the price equals to zero wei", async function () {
+				const { marketplace, testItem, user, tokenId } = await loadFixture(deployMarketplaceFixture);
+
+				await testItem.connect(user).approve(marketplace.address, tokenId);
+
+				const promise = marketplace.connect(user).listItem(testItem.address, tokenId, 0);
+				await expect(promise).to.be.revertedWithCustomError(marketplace, "PriceMustBeAboveZero");
+			});
+
+			it("Shouldn't fail if called by the token deployer with the right price", async function () {
+				const { marketplace, testItem, user, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await testItem.connect(user).approve(marketplace.address, tokenId);
+
+				const promise = marketplace.connect(user).listItem(testItem.address, tokenId, tokenPrice);
 				await expect(promise).not.to.be.reverted;
 			});
 		});
 
 		describe("Events", function () {
-			it("Should emit an event on item listings", async function () {
-				const { marketplace, gameItem, player, tokenId, tokenPrice } = await loadFixture(
+			it("Should emit an event on an item listing", async function () {
+				const { marketplace, testItem, user, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
 
-				await gameItem.connect(player).approve(marketplace.address, tokenId);
+				await testItem.connect(user).approve(marketplace.address, tokenId);
 
-				const promise = marketplace.connect(player).listItem(gameItem.address, tokenId, tokenPrice);
+				const promise = marketplace.connect(user).listItem(testItem.address, tokenId, tokenPrice);
 				await expect(promise)
 					.to.emit(marketplace, "ItemListed")
-					.withArgs(player.address, gameItem.address, tokenId, tokenPrice);
+					.withArgs(user.address, testItem.address, tokenId, tokenPrice);
 			});
 		});
 
 		describe("Actions", function () {
 			it("Should list the item with the right price and the seller's address", async function () {
-				const { marketplace, gameItem, player, tokenId, tokenPrice } = await loadFixture(
+				const { marketplace, testItem, user, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
 
-				await gameItem.connect(player).approve(marketplace.address, tokenId);
-				await marketplace.connect(player).listItem(gameItem.address, tokenId, tokenPrice);
+				await testItem.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listItem(testItem.address, tokenId, tokenPrice);
 
-				const actual = await marketplace.getListing(gameItem.address, tokenId);
+				const actual = await marketplace.getListing(testItem.address, tokenId);
 				expect(actual).to.contain.keys("price", "seller");
 				expect(actual.price).to.be.equal(tokenPrice);
-				expect(actual.seller).to.be.equal(player.address);
+				expect(actual.seller).to.be.equal(user.address);
 			});
 		});
 	});
