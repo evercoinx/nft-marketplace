@@ -78,8 +78,8 @@ contract Marketplace is ReentrancyGuard {
 
 	function delistToken(address tokenContract, uint256 tokenId)
 		external
-		isOwner(tokenContract, tokenId, msg.sender)
 		isListed(tokenContract, tokenId)
+		isOwner(tokenContract, tokenId, msg.sender)
 	{
 		delete _listings[tokenContract][tokenId];
 		emit TokenDelisted(msg.sender, tokenContract, tokenId);
@@ -92,8 +92,8 @@ contract Marketplace is ReentrancyGuard {
 		isApproved(tokenContract, tokenId)
 		nonReentrant
 	{
-		Listing memory listedItem = _listings[tokenContract][tokenId];
-		if (msg.value != listedItem.price) {
+		Listing memory listedToken = _listings[tokenContract][tokenId];
+		if (msg.value != listedToken.price) {
 			revert PriceNotMatched(tokenContract, tokenId, msg.value);
 		}
 
@@ -103,14 +103,18 @@ contract Marketplace is ReentrancyGuard {
 			revert OwnerNotAllowed(owner);
 		}
 
-		_proceeds[listedItem.seller] += msg.value;
+		_proceeds[listedToken.seller] += msg.value;
 		delete _listings[tokenContract][tokenId];
 
-		nft.safeTransferFrom(listedItem.seller, msg.sender, tokenId);
-		emit TokenBought(msg.sender, tokenContract, tokenId, listedItem.price);
+		nft.safeTransferFrom(listedToken.seller, msg.sender, tokenId);
+		emit TokenBought(msg.sender, tokenContract, tokenId, listedToken.price);
 	}
 
 	function getListing(address tokenContract, uint256 tokenId) external view returns (Listing memory) {
 		return _listings[tokenContract][tokenId];
+	}
+
+	function getProceeds(address seller) external view returns (uint256) {
+		return _proceeds[seller];
 	}
 }

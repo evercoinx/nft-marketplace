@@ -102,7 +102,7 @@ describe("Markeplace", function () {
 		});
 
 		describe("Post actions", function () {
-			it("Should get token data after listing the token", async function () {
+			it("Should get a non-empty listing after listing the token", async function () {
 				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
@@ -295,7 +295,7 @@ describe("Markeplace", function () {
 		});
 
 		describe("Post actions", function () {
-			it("Should get empty token data after buying the token", async function () {
+			it("Should get an empty listing after buying the token", async function () {
 				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
@@ -309,6 +309,20 @@ describe("Markeplace", function () {
 				expect(actual).to.contain.keys("price", "seller");
 				expect(actual.price).to.be.equal(0);
 				expect(actual.seller).to.be.equal(ethers.constants.AddressZero);
+			});
+
+			it("Should get non-empty seller's proceeds after selling the token to another user", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+
+				const actual = await marketplace.getProceeds(user.address);
+				expect(actual).to.be.equal(tokenPrice);
 			});
 
 			it("Should change the token owner after buying the token", async function () {
@@ -327,13 +341,34 @@ describe("Markeplace", function () {
 		});
 	});
 
-	describe("Send ether", function () {
-		it("Should revert without a reason if an account sends ether without calldata to the contract", async function () {
+	describe("Fallback", function () {
+		it("Should revert without a reason if an account sends ether to the contract", async function () {
 			const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
 
 			const promise = user.sendTransaction({
 				to: marketplace.address,
 				value: ethers.utils.parseEther("1"),
+			});
+
+			await expect(promise).to.be.revertedWithoutReason();
+		});
+
+		it("Should revert without a reason if an account calls a non-existing method on the contract", async function () {
+			const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
+
+			const promise = user.sendTransaction({
+				to: marketplace.address,
+				data: ethers.utils.solidityKeccak256(["string"], ["foobar()"]),
+			});
+
+			await expect(promise).to.be.revertedWithoutReason();
+		});
+
+		it("Should revert without a reason if an account sends no ether and no data", async function () {
+			const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
+
+			const promise = user.sendTransaction({
+				to: marketplace.address,
 			});
 
 			await expect(promise).to.be.revertedWithoutReason();
