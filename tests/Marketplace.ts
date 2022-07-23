@@ -27,7 +27,7 @@ describe("Markeplace", function () {
 		};
 	}
 
-	describe("Token listings", function () {
+	describe("List a token", function () {
 		describe("Validations", function () {
 			it("Should revert with the right error if called from an non-owner account", async function () {
 				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
@@ -37,7 +37,9 @@ describe("Markeplace", function () {
 				await dummyNft.connect(user).approve(user2.address, tokenId);
 
 				const promise = marketplace.connect(user2).listToken(dummyNft.address, tokenId, tokenPrice);
-				await expect(promise).to.be.revertedWithCustomError(marketplace, "NotOwner");
+				await expect(promise)
+					.to.be.revertedWithCustomError(marketplace, "SpenderNotAllowed")
+					.withArgs(user2.address);
 			});
 
 			it("Should revert with the right error if the marketplace is not an approved operator", async function () {
@@ -46,7 +48,7 @@ describe("Markeplace", function () {
 				);
 
 				const promise = marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
-				await expect(promise).to.be.revertedWithCustomError(marketplace, "NotApprovedOperator");
+				await expect(promise).to.be.revertedWithCustomError(marketplace, "OperatorNotApproved").withArgs();
 			});
 
 			it("Should revert with the right error if the item has been already listed", async function () {
@@ -59,7 +61,7 @@ describe("Markeplace", function () {
 
 				const promise = marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
 				await expect(promise)
-					.to.be.revertedWithCustomError(marketplace, "AlreadyListed")
+					.to.be.revertedWithCustomError(marketplace, "TokenAlreadyListed")
 					.withArgs(dummyNft.address, tokenId);
 			});
 
@@ -69,10 +71,10 @@ describe("Markeplace", function () {
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 
 				const promise = marketplace.connect(user).listToken(dummyNft.address, tokenId, 0);
-				await expect(promise).to.be.revertedWithCustomError(marketplace, "PriceMustBeAboveZero");
+				await expect(promise).to.be.revertedWithCustomError(marketplace, "PriceNotPositive").withArgs(0);
 			});
 
-			it("Shouldn't fail if called by the token owner with the price above zero wei", async function () {
+			it("Shouldn't revert if called by the right parameters", async function () {
 				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
@@ -85,7 +87,7 @@ describe("Markeplace", function () {
 		});
 
 		describe("Events", function () {
-			it("Should emit an event on a token listing", async function () {
+			it("Should emit an event when listing the token", async function () {
 				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
@@ -99,8 +101,8 @@ describe("Markeplace", function () {
 			});
 		});
 
-		describe("Actions", function () {
-			it("Should list the item with the right price and the seller's address", async function () {
+		describe("Post actions", function () {
+			it("Should get token data after listing the token", async function () {
 				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
@@ -116,7 +118,7 @@ describe("Markeplace", function () {
 		});
 	});
 
-	describe("Token delistings", function () {
+	describe("Delist a token", function () {
 		describe("Validations", function () {
 			it("Should revert with the right error if called from an non-owner account", async function () {
 				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
@@ -129,7 +131,9 @@ describe("Markeplace", function () {
 				await dummyNft.connect(user).approve(user2.address, tokenId);
 
 				const promise = marketplace.connect(user2).delistToken(dummyNft.address, tokenId);
-				await expect(promise).to.be.revertedWithCustomError(marketplace, "NotOwner");
+				await expect(promise)
+					.to.be.revertedWithCustomError(marketplace, "SpenderNotAllowed")
+					.withArgs(user2.address);
 			});
 
 			it("Should revert with the right error if the item has not been listed yet", async function () {
@@ -139,13 +143,25 @@ describe("Markeplace", function () {
 
 				const promise = marketplace.connect(user).delistToken(dummyNft.address, tokenId);
 				await expect(promise)
-					.to.be.revertedWithCustomError(marketplace, "NotListed")
+					.to.be.revertedWithCustomError(marketplace, "TokenNotListed")
 					.withArgs(dummyNft.address, tokenId);
+			});
+
+			it("Shouldn't revert if called with the right parameters", async function () {
+				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				const promise = marketplace.connect(user).delistToken(dummyNft.address, tokenId);
+				await expect(promise).not.be.reverted;
 			});
 		});
 
 		describe("Events", function () {
-			it("Should emit an event on a token delisting", async function () {
+			it("Should emit an event when delisting the token", async function () {
 				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
@@ -160,8 +176,8 @@ describe("Markeplace", function () {
 			});
 		});
 
-		describe("Actions", function () {
-			it("Should delist the token returing empty data regarding its previous listing", async function () {
+		describe("Post actions", function () {
+			it("Should get empty token data after delisting the token", async function () {
 				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
@@ -179,8 +195,140 @@ describe("Markeplace", function () {
 		});
 	});
 
-	describe("Fallbacks", function () {
-		it("Should revert without a reason if an account sends ether to the contract", async function () {
+	describe("Buy a token", function () {
+		describe("Validations", function () {
+			it("Should revert with the rigth error if the token has not been listed yet", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+
+				const promise = marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+				await expect(promise)
+					.be.revertedWithCustomError(marketplace, "TokenNotListed")
+					.withArgs(dummyNft.address, tokenId);
+			});
+
+			it("Should revert with the right error if the marketplace is not an approved operator", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+				await dummyNft.connect(user).approve(ethers.constants.AddressZero, tokenId);
+
+				const promise = marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+				await expect(promise).to.be.revertedWithCustomError(marketplace, "OperatorNotApproved").withArgs();
+			});
+
+			it("Should revert with the right error if called with a price lower than the one in the listing", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				const value = tokenPrice.sub(1);
+				const promise = marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value });
+				await expect(promise)
+					.be.revertedWithCustomError(marketplace, "PriceNotMatched")
+					.withArgs(dummyNft.address, tokenId, value);
+			});
+
+			it("Should revert with the right error if called with a price greater than the one in the listing", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				const value = tokenPrice.add(1);
+				const promise = marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value });
+				await expect(promise)
+					.be.revertedWithCustomError(marketplace, "PriceNotMatched")
+					.withArgs(dummyNft.address, tokenId, value);
+			});
+
+			it("Should revert with the right error if called by the token owner", async function () {
+				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				const promise = marketplace.connect(user).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+				await expect(promise).be.revertedWithCustomError(marketplace, "OwnerNotAllowed").withArgs(user.address);
+			});
+
+			it("Shouldn't revert if called with the right parameters", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				const promise = marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+				await expect(promise).not.be.reverted;
+			});
+		});
+
+		describe("Events", function () {
+			it("Should emit an event when buying the token", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				const promise = marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+				await expect(promise)
+					.to.emit(marketplace, "TokenBought")
+					.withArgs(user2.address, dummyNft.address, tokenId, tokenPrice);
+			});
+		});
+
+		describe("Post actions", function () {
+			it("Should get empty token data after buying the token", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+
+				const actual = await marketplace.getListing(dummyNft.address, tokenId);
+				expect(actual).to.contain.keys("price", "seller");
+				expect(actual.price).to.be.equal(0);
+				expect(actual.seller).to.be.equal(ethers.constants.AddressZero);
+			});
+
+			it("Should change the token owner after buying the token", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+
+				const actual = await dummyNft.ownerOf(tokenId);
+				expect(actual).to.equal(user2.address);
+			});
+		});
+	});
+
+	describe("Send ether", function () {
+		it("Should revert without a reason if an account sends ether without calldata to the contract", async function () {
 			const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
 
 			const promise = user.sendTransaction({
