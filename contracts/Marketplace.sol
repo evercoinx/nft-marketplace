@@ -21,12 +21,25 @@ contract Marketplace is ReentrancyGuard {
 		address seller;
 	}
 
-	event ItemListed(address indexed seller, address indexed tokenContract, uint256 indexed tokenId, uint256 price);
+	event TokenListed(address indexed seller, address indexed tokenContract, uint256 indexed tokenId, uint256 price);
 	event TokenDelisted(address indexed seller, address indexed tokenContract, uint256 indexed tokenId);
-	// event ItemBought(address indexed buyer, address indexed nftAddress, uint256 indexed tokenId, uint256 price);
+	// event TokenBought(address indexed buyer, address indexed nftAddress, uint256 indexed tokenId, uint256 price);
 
 	mapping(address => mapping(uint256 => Listing)) private _listings;
 	// mapping(address => uint256) private _proceeds;
+
+	modifier isOwner(
+		address tokenContract,
+		uint256 tokenId,
+		address spender
+	) {
+		IERC721 nft = IERC721(tokenContract);
+		address owner = nft.ownerOf(tokenId);
+		if (spender != owner) {
+			revert NotOwner();
+		}
+		_;
+	}
 
 	modifier notListed(address tokenContract, uint256 tokenId) {
 		Listing memory listing = _listings[tokenContract][tokenId];
@@ -44,20 +57,7 @@ contract Marketplace is ReentrancyGuard {
 		_;
 	}
 
-	modifier isOwner(
-		address tokenContract,
-		uint256 tokenId,
-		address spender
-	) {
-		IERC721 nft = IERC721(tokenContract);
-		address owner = nft.ownerOf(tokenId);
-		if (spender != owner) {
-			revert NotOwner();
-		}
-		_;
-	}
-
-	function listItem(
+	function listToken(
 		address tokenContract,
 		uint256 tokenId,
 		uint256 price
@@ -72,7 +72,7 @@ contract Marketplace is ReentrancyGuard {
 		}
 
 		_listings[tokenContract][tokenId] = Listing(price, msg.sender);
-		emit ItemListed(msg.sender, tokenContract, tokenId, price);
+		emit TokenListed(msg.sender, tokenContract, tokenId, price);
 	}
 
 	function delistToken(address tokenContract, uint256 tokenId)
