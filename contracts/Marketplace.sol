@@ -3,7 +3,6 @@ pragma solidity ^0.8.9;
 
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "hardhat/console.sol";
 
 error OperatorNotApproved();
 error OwnerNotAllowed(address owner);
@@ -12,9 +11,7 @@ error TokenAlreadyListed(address tokenContract, uint256 tokenId);
 error TokenNotListed(address tokenContract, uint256 tokenId);
 error PriceNotPositive(uint256 price);
 error PriceNotMatched(address tokenContract, uint256 tokenId, uint256 price);
-
-// error ItemNotForSale(address tokenContract, uint256 tokenId);
-// error NoProceeds();
+error ProceedsNotFound(address seller);
 
 contract Marketplace is ReentrancyGuard {
 	struct Listing {
@@ -25,6 +22,7 @@ contract Marketplace is ReentrancyGuard {
 	event TokenListed(address indexed seller, address indexed tokenContract, uint256 indexed tokenId, uint256 price);
 	event TokenDelisted(address indexed seller, address indexed tokenContract, uint256 indexed tokenId);
 	event TokenBought(address indexed buyer, address indexed tokenContract, uint256 indexed tokenId, uint256 price);
+	event ProceedsWithdrawn(address indexed spender, uint256 proceeds);
 
 	mapping(address => mapping(uint256 => Listing)) private _listings;
 	mapping(address => uint256) private _proceeds;
@@ -90,7 +88,6 @@ contract Marketplace is ReentrancyGuard {
 		payable
 		isListed(tokenContract, tokenId)
 		isApproved(tokenContract, tokenId)
-		nonReentrant
 	{
 		Listing memory listedToken = _listings[tokenContract][tokenId];
 		if (msg.value != listedToken.price) {
@@ -121,6 +118,19 @@ contract Marketplace is ReentrancyGuard {
 
 		_listings[tokenContract][tokenId].price = newPrice;
 		emit TokenListed(msg.sender, tokenContract, tokenId, newPrice);
+	}
+
+	function withdrawProceeds() external nonReentrant {
+		uint256 proceeds = _proceeds[msg.sender];
+		if (proceeds <= 0) {
+			revert ProceedsNotFound(msg.sender);
+		}
+		_proceeds[msg.sender] = 0;
+
+		(bool success, ) = payable(msg.sender).call{ value: proceeds }("");
+		require(success, "Transfer failed");
+
+		emit ProceedsWithdrawn(msg.sender, proceeds);
 	}
 
 	function getListing(address tokenContract, uint256 tokenId) external view returns (Listing memory) {

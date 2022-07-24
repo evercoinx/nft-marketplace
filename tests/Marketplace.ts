@@ -311,7 +311,7 @@ describe("Markeplace", function () {
 				expect(actual.seller).to.be.equal(ethers.constants.AddressZero);
 			});
 
-			it("Should get non-empty seller's proceeds after selling the token to another user", async function () {
+			it("Should get non-empty proceeds after selling the token", async function () {
 				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
@@ -450,6 +450,68 @@ describe("Markeplace", function () {
 				expect(actual).to.contain.keys("price", "seller");
 				expect(actual.price).to.be.equal(newTokenPrice);
 				expect(actual.seller).to.be.equal(user.address);
+			});
+		});
+	});
+
+	describe("Withdraw proceeds", function () {
+		describe("Validations", function () {
+			it("Should revert with the right error if called from an account having no procceeds", async function () {
+				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				const promise = marketplace.connect(user).withdrawProceeds();
+				await expect(promise)
+					.to.be.revertedWithCustomError(marketplace, "ProceedsNotFound")
+					.withArgs(user.address);
+			});
+
+			it("Shouldn't revert if called with all prerequisites met", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+
+				const promise = marketplace.connect(user).withdrawProceeds();
+				await expect(promise).not.be.reverted;
+			});
+		});
+
+		describe("Events", function () {
+			it("Should emit an event when withdrawing the proceeds", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+
+				const promise = marketplace.connect(user).withdrawProceeds();
+				await expect(promise).to.emit(marketplace, "ProceedsWithdrawn").withArgs(user.address, tokenPrice);
+			});
+		});
+
+		describe("Post actions", function () {
+			it("Should get empty proceeds after selling the token", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+				await marketplace.connect(user).withdrawProceeds();
+
+				const actual = await marketplace.getProceeds(user.address);
+				expect(actual).to.be.equal(0);
 			});
 		});
 	});
