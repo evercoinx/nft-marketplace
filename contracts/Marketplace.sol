@@ -110,6 +110,19 @@ contract Marketplace is ReentrancyGuard {
 		emit TokenBought(msg.sender, tokenContract, tokenId, listedToken.price);
 	}
 
+	function updateListing(
+		address tokenContract,
+		uint256 tokenId,
+		uint256 newPrice
+	) external isListed(tokenContract, tokenId) isOwner(tokenContract, tokenId, msg.sender) nonReentrant {
+		if (newPrice == 0) {
+			revert PriceNotPositive(newPrice);
+		}
+
+		_listings[tokenContract][tokenId].price = newPrice;
+		emit TokenListed(msg.sender, tokenContract, tokenId, newPrice);
+	}
+
 	function getListing(address tokenContract, uint256 tokenId) external view returns (Listing memory) {
 		return _listings[tokenContract][tokenId];
 	}
