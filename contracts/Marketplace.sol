@@ -2,18 +2,18 @@
 pragma solidity ^0.8.9;
 
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { PullPayment } from "@openzeppelin/contracts/security/PullPayment.sol";
 
 error OperatorNotApproved();
 error OwnerNotAllowed(address owner);
 error SpenderNotAllowed(address spender);
+error WithdrawalNotAllowed(address spender);
 error TokenAlreadyListed(address tokenContract, uint256 tokenId);
 error TokenNotListed(address tokenContract, uint256 tokenId);
 error PriceNotPositive(uint256 price);
 error PriceNotMatched(address tokenContract, uint256 tokenId, uint256 price);
-error ProceedsNotFound(address seller);
 
-contract Marketplace is ReentrancyGuard {
+contract Marketplace is PullPayment {
 	struct Listing {
 		uint256 price;
 		address seller;
@@ -22,10 +22,9 @@ contract Marketplace is ReentrancyGuard {
 	event TokenListed(address indexed seller, address indexed tokenContract, uint256 indexed tokenId, uint256 price);
 	event TokenDelisted(address indexed seller, address indexed tokenContract, uint256 indexed tokenId);
 	event TokenBought(address indexed buyer, address indexed tokenContract, uint256 indexed tokenId, uint256 price);
-	event ProceedsWithdrawn(address indexed spender, uint256 proceeds);
+	event PaymentsWithdrawn(address indexed payee, uint256 amount);
 
 	mapping(address => mapping(uint256 => Listing)) private _listings;
-	mapping(address => uint256) private _proceeds;
 
 	modifier isOwner(
 		address tokenContract,
@@ -90,7 +89,7 @@ contract Marketplace is ReentrancyGuard {
 		isApproved(tokenContract, tokenId)
 	{
 		Listing memory listedToken = _listings[tokenContract][tokenId];
-		if (msg.value != listedToken.price) {
+		if (listedToken.price != msg.value) {
 			revert PriceNotMatched(tokenContract, tokenId, msg.value);
 		}
 
@@ -100,18 +99,28 @@ contract Marketplace is ReentrancyGuard {
 			revert OwnerNotAllowed(owner);
 		}
 
-		_proceeds[listedToken.seller] += msg.value;
+		super._asyncTransfer(listedToken.seller, msg.value);
 		delete _listings[tokenContract][tokenId];
 
 		nft.safeTransferFrom(listedToken.seller, msg.sender, tokenId);
 		emit TokenBought(msg.sender, tokenContract, tokenId, listedToken.price);
 	}
 
+	function withdrawPayments(address payable payee) public override {
+		if (msg.sender != payee) {
+			revert WithdrawalNotAllowed(msg.sender);
+		}
+
+		uint256 amount = super.payments(payee);
+		super.withdrawPayments(payee);
+		emit PaymentsWithdrawn(payee, amount);
+	}
+
 	function updateListing(
 		address tokenContract,
 		uint256 tokenId,
 		uint256 newPrice
-	) external isListed(tokenContract, tokenId) isOwner(tokenContract, tokenId, msg.sender) nonReentrant {
+	) external isListed(tokenContract, tokenId) isOwner(tokenContract, tokenId, msg.sender) {
 		if (newPrice == 0) {
 			revert PriceNotPositive(newPrice);
 		}
@@ -120,24 +129,7 @@ contract Marketplace is ReentrancyGuard {
 		emit TokenListed(msg.sender, tokenContract, tokenId, newPrice);
 	}
 
-	function withdrawProceeds() external nonReentrant {
-		uint256 proceeds = _proceeds[msg.sender];
-		if (proceeds <= 0) {
-			revert ProceedsNotFound(msg.sender);
-		}
-		_proceeds[msg.sender] = 0;
-
-		(bool success, ) = payable(msg.sender).call{ value: proceeds }("");
-		require(success, "Transfer failed");
-
-		emit ProceedsWithdrawn(msg.sender, proceeds);
-	}
-
 	function getListing(address tokenContract, uint256 tokenId) external view returns (Listing memory) {
 		return _listings[tokenContract][tokenId];
-	}
-
-	function getProceeds(address seller) external view returns (uint256) {
-		return _proceeds[seller];
 	}
 }
