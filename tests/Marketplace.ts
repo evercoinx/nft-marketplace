@@ -1,11 +1,11 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 
 describe("Markeplace", function () {
 	async function deployMarketplaceFixture() {
 		const Marketplace = await ethers.getContractFactory("Marketplace");
-		const marketplace = await Marketplace.deploy();
+		const marketplace = await upgrades.deployProxy(Marketplace, []);
 
 		const DummyNft = await ethers.getContractFactory("DummyNft");
 		const dummyNft = await DummyNft.deploy();

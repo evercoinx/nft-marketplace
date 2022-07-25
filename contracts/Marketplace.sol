@@ -2,7 +2,8 @@
 pragma solidity ^0.8.9;
 
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import { PullPayment } from "@openzeppelin/contracts/security/PullPayment.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { PullPaymentUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PullPaymentUpgradeable.sol";
 
 error OperatorNotApproved();
 error OwnerNotAllowed(address owner);
@@ -13,7 +14,7 @@ error TokenNotListed(address tokenContract, uint256 tokenId);
 error PriceNotPositive(uint256 price);
 error PriceNotMatched(address tokenContract, uint256 tokenId, uint256 price);
 
-contract Marketplace is PullPayment {
+contract Marketplace is Initializable, PullPaymentUpgradeable {
 	struct Listing {
 		uint256 price;
 		address seller;
@@ -53,6 +54,10 @@ contract Marketplace is PullPayment {
 			revert OperatorNotApproved();
 		}
 		_;
+	}
+
+	function initialize() public initializer {
+		PullPaymentUpgradeable.__PullPayment_init();
 	}
 
 	function listToken(

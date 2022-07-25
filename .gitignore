@@ -1,5 +1,6 @@
 .artifacts
 .cache
+.openzeppelin/unknown-*.json
 .vscode
 coverage
 node_modules
