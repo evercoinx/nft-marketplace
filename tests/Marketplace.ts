@@ -555,6 +555,72 @@ describe("Markeplace", function () {
 		});
 	});
 
+	describe("Pause the contract", function () {
+		describe("Validations", function () {
+			it("Should revert with the right reason if called from an non-owner account", async function () {
+				const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.connect(user).pause();
+				await expect(promise).to.be.revertedWith("Ownable: caller is not the owner");
+			});
+
+			it("Shouldn't revert if called from the owner account", async function () {
+				const { marketplace } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.pause();
+				await expect(promise).not.to.be.reverted;
+			});
+		});
+
+		describe("Events", function () {
+			it("Should emit an event when pausing the contract", async function () {
+				const { marketplace, deployer } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = await marketplace.pause();
+
+				await expect(promise).to.emit(marketplace, "Paused").withArgs(deployer.address);
+			});
+		});
+
+		describe("Post actions", function () {
+			it("Should return the paused state after pausing the contract", async function () {
+				const { marketplace } = await loadFixture(deployMarketplaceFixture);
+
+				await marketplace.pause();
+
+				const actual = await marketplace.paused();
+				expect(actual).to.be.true;
+			});
+
+			it("Should prevent users from buying tokens after pausing the contract", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+				await marketplace.pause();
+
+				const promise = marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+				await expect(promise).to.be.revertedWith("Pausable: paused");
+			});
+
+			it("Should prevent users from withdrawing payments after pausing the contract", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+				await marketplace.pause();
+
+				const promise = marketplace.connect(user).withdrawPayments(user.address);
+				await expect(promise).to.be.revertedWith("Pausable: paused");
+			});
+		});
+	});
+
 	describe("Fallback", function () {
 		it("Should revert without a reason if an account sends ether to the contract", async function () {
 			const { marketplace, user } = await loadFixture(deployMarketplaceFixture);

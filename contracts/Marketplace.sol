@@ -3,6 +3,8 @@ pragma solidity ^0.8.9;
 
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { PullPaymentUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PullPaymentUpgradeable.sol";
 
 error OperatorNotApproved();
@@ -14,7 +16,7 @@ error TokenNotListed(address tokenContract, uint256 tokenId);
 error PriceNotPositive(uint256 price);
 error PriceNotMatched(address tokenContract, uint256 tokenId, uint256 price);
 
-contract Marketplace is Initializable, PullPaymentUpgradeable {
+contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, PullPaymentUpgradeable {
 	struct Listing {
 		uint256 price;
 		address seller;
@@ -27,7 +29,7 @@ contract Marketplace is Initializable, PullPaymentUpgradeable {
 
 	mapping(address => mapping(uint256 => Listing)) private _listings;
 
-	modifier isOwner(
+	modifier isNftOwner(
 		address tokenContract,
 		uint256 tokenId,
 		address spender
@@ -57,6 +59,8 @@ contract Marketplace is Initializable, PullPaymentUpgradeable {
 	}
 
 	function initialize() public initializer {
+		OwnableUpgradeable.__Ownable_init();
+		PausableUpgradeable.__Pausable_init();
 		PullPaymentUpgradeable.__PullPayment_init();
 	}
 
@@ -64,7 +68,7 @@ contract Marketplace is Initializable, PullPaymentUpgradeable {
 		address tokenContract,
 		uint256 tokenId,
 		uint256 price
-	) external isOwner(tokenContract, tokenId, msg.sender) isApproved(tokenContract, tokenId) {
+	) external isNftOwner(tokenContract, tokenId, msg.sender) isApproved(tokenContract, tokenId) {
 		if (price <= 0) {
 			revert PriceNotPositive(price);
 		}
@@ -81,7 +85,7 @@ contract Marketplace is Initializable, PullPaymentUpgradeable {
 	function delistToken(address tokenContract, uint256 tokenId)
 		external
 		isListed(tokenContract, tokenId)
-		isOwner(tokenContract, tokenId, msg.sender)
+		isNftOwner(tokenContract, tokenId, msg.sender)
 	{
 		delete _listings[tokenContract][tokenId];
 		emit TokenDelisted(msg.sender, tokenContract, tokenId);
@@ -90,6 +94,7 @@ contract Marketplace is Initializable, PullPaymentUpgradeable {
 	function buyToken(address tokenContract, uint256 tokenId)
 		external
 		payable
+		whenNotPaused
 		isListed(tokenContract, tokenId)
 		isApproved(tokenContract, tokenId)
 	{
@@ -111,7 +116,7 @@ contract Marketplace is Initializable, PullPaymentUpgradeable {
 		emit TokenBought(msg.sender, tokenContract, tokenId, listedToken.price);
 	}
 
-	function withdrawPayments(address payable payee) public override {
+	function withdrawPayments(address payable payee) public override whenNotPaused {
 		if (msg.sender != payee) {
 			revert WithdrawalNotAllowed(msg.sender);
 		}
@@ -125,13 +130,21 @@ contract Marketplace is Initializable, PullPaymentUpgradeable {
 		address tokenContract,
 		uint256 tokenId,
 		uint256 newPrice
-	) external isListed(tokenContract, tokenId) isOwner(tokenContract, tokenId, msg.sender) {
+	) external isListed(tokenContract, tokenId) isNftOwner(tokenContract, tokenId, msg.sender) {
 		if (newPrice == 0) {
 			revert PriceNotPositive(newPrice);
 		}
 
 		_listings[tokenContract][tokenId].price = newPrice;
 		emit TokenListed(msg.sender, tokenContract, tokenId, newPrice);
+	}
+
+	function pause() external onlyOwner {
+		super._pause();
+	}
+
+	function unpause() external onlyOwner {
+		super._unpause();
 	}
 
 	function getListing(address tokenContract, uint256 tokenId) external view returns (Listing memory) {
