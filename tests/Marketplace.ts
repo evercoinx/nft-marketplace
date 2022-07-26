@@ -505,7 +505,7 @@ describe("Markeplace", function () {
 				await expect(promise).not.be.reverted;
 			});
 
-			it("Shouldn't revert when all prerequisites are met", async function () {
+			it("Shouldn't revert if called from the payee account", async function () {
 				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
@@ -515,6 +515,19 @@ describe("Markeplace", function () {
 				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
 
 				const promise = marketplace.connect(user).withdrawPayments(user.address);
+				await expect(promise).not.be.reverted;
+			});
+
+			it("Shouldn't revert if called from the owner account", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+
+				const promise = marketplace.withdrawPayments(user.address);
 				await expect(promise).not.be.reverted;
 			});
 		});

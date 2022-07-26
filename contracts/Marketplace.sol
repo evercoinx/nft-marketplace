@@ -120,7 +120,7 @@ contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 	}
 
 	function withdrawPayments(address payable payee) public override whenNotPaused {
-		if (msg.sender != payee) {
+		if (msg.sender != payee && msg.sender != super.owner()) {
 			revert WithdrawalForbidden(msg.sender);
 		}
 
