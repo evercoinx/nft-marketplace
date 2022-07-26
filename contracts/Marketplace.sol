@@ -8,13 +8,13 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/securit
 import { PullPaymentUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PullPaymentUpgradeable.sol";
 
 error OperatorNotApproved();
-error OwnerNotAllowed(address owner);
-error SpenderNotAllowed(address spender);
-error WithdrawalNotAllowed(address spender);
+error SpenderNotNftOwner(address spender);
+error PurchaseForbidden(address buyer);
+error WithdrawalForbidden(address payee);
 error TokenAlreadyListed(address tokenContract, uint256 tokenId);
 error TokenNotListed(address tokenContract, uint256 tokenId);
+error PriceMismatched(address tokenContract, uint256 tokenId, uint256 price);
 error PriceNotPositive(uint256 price);
-error PriceNotMatched(address tokenContract, uint256 tokenId, uint256 price);
 
 contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, PullPaymentUpgradeable {
 	struct Listing {
@@ -35,9 +35,8 @@ contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 		address spender
 	) {
 		IERC721 nft = IERC721(tokenContract);
-		address owner = nft.ownerOf(tokenId);
-		if (spender != owner) {
-			revert SpenderNotAllowed(spender);
+		if (nft.ownerOf(tokenId) != spender) {
+			revert SpenderNotNftOwner(spender);
 		}
 		_;
 	}
@@ -56,6 +55,11 @@ contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 			revert OperatorNotApproved();
 		}
 		_;
+	}
+
+	/// @custom:oz-upgrades-unsafe-allow constructor
+	constructor() {
+		_disableInitializers();
 	}
 
 	function initialize() public initializer {
@@ -100,13 +104,12 @@ contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 	{
 		Listing memory listedToken = _listings[tokenContract][tokenId];
 		if (listedToken.price != msg.value) {
-			revert PriceNotMatched(tokenContract, tokenId, msg.value);
+			revert PriceMismatched(tokenContract, tokenId, msg.value);
 		}
 
 		IERC721 nft = IERC721(tokenContract);
-		address owner = nft.ownerOf(tokenId);
-		if (msg.sender == owner) {
-			revert OwnerNotAllowed(owner);
+		if (nft.ownerOf(tokenId) == msg.sender) {
+			revert PurchaseForbidden(msg.sender);
 		}
 
 		super._asyncTransfer(listedToken.seller, msg.value);
@@ -118,7 +121,7 @@ contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 
 	function withdrawPayments(address payable payee) public override whenNotPaused {
 		if (msg.sender != payee) {
-			revert WithdrawalNotAllowed(msg.sender);
+			revert WithdrawalForbidden(msg.sender);
 		}
 
 		uint256 amount = super.payments(payee);
