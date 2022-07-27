@@ -8,12 +8,12 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/securit
 import { PullPaymentUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PullPaymentUpgradeable.sol";
 
 error OperatorNotApproved();
-error SpenderNotNftOwner(address spender);
+error NftOwnerMismatched(address spender);
 error PurchaseForbidden(address buyer);
 error WithdrawalForbidden(address payee);
 error TokenAlreadyListed(address tokenContract, uint256 tokenId);
 error TokenNotListed(address tokenContract, uint256 tokenId);
-error PriceMismatched(address tokenContract, uint256 tokenId, uint256 price);
+error ListingPriceMismatched(address tokenContract, uint256 tokenId, uint256 price);
 error PriceNotPositive(uint256 price);
 
 contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, PullPaymentUpgradeable {
@@ -36,7 +36,7 @@ contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 	) {
 		IERC721 nft = IERC721(tokenContract);
 		if (nft.ownerOf(tokenId) != spender) {
-			revert SpenderNotNftOwner(spender);
+			revert NftOwnerMismatched(spender);
 		}
 		_;
 	}
@@ -102,9 +102,9 @@ contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 		isListed(tokenContract, tokenId)
 		isApproved(tokenContract, tokenId)
 	{
-		Listing memory listedToken = _listings[tokenContract][tokenId];
-		if (listedToken.price != msg.value) {
-			revert PriceMismatched(tokenContract, tokenId, msg.value);
+		Listing memory listing = _listings[tokenContract][tokenId];
+		if (listing.price != msg.value) {
+			revert ListingPriceMismatched(tokenContract, tokenId, msg.value);
 		}
 
 		IERC721 nft = IERC721(tokenContract);
@@ -112,11 +112,11 @@ contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 			revert PurchaseForbidden(msg.sender);
 		}
 
-		super._asyncTransfer(listedToken.seller, msg.value);
+		super._asyncTransfer(listing.seller, msg.value);
 		delete _listings[tokenContract][tokenId];
 
-		nft.safeTransferFrom(listedToken.seller, msg.sender, tokenId);
-		emit TokenBought(msg.sender, tokenContract, tokenId, listedToken.price);
+		nft.safeTransferFrom(listing.seller, msg.sender, tokenId);
+		emit TokenBought(msg.sender, tokenContract, tokenId, listing.price);
 	}
 
 	function withdrawPayments(address payable payee) public override whenNotPaused {

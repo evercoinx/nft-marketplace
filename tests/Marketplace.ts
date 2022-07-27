@@ -47,7 +47,7 @@ describe("Markeplace", function () {
 
 				const promise = marketplace.connect(user2).listToken(dummyNft.address, tokenId, tokenPrice);
 				await expect(promise)
-					.to.be.revertedWithCustomError(marketplace, "SpenderNotNftOwner")
+					.to.be.revertedWithCustomError(marketplace, "NftOwnerMismatched")
 					.withArgs(user2.address);
 			});
 
@@ -141,7 +141,7 @@ describe("Markeplace", function () {
 
 				const promise = marketplace.connect(user2).delistToken(dummyNft.address, tokenId);
 				await expect(promise)
-					.to.be.revertedWithCustomError(marketplace, "SpenderNotNftOwner")
+					.to.be.revertedWithCustomError(marketplace, "NftOwnerMismatched")
 					.withArgs(user2.address);
 			});
 
@@ -243,7 +243,7 @@ describe("Markeplace", function () {
 				const value = tokenPrice.sub(1);
 				const promise = marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value });
 				await expect(promise)
-					.be.revertedWithCustomError(marketplace, "PriceMismatched")
+					.be.revertedWithCustomError(marketplace, "ListingPriceMismatched")
 					.withArgs(dummyNft.address, tokenId, value);
 			});
 
@@ -258,7 +258,7 @@ describe("Markeplace", function () {
 				const value = tokenPrice.add(1);
 				const promise = marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value });
 				await expect(promise)
-					.be.revertedWithCustomError(marketplace, "PriceMismatched")
+					.be.revertedWithCustomError(marketplace, "ListingPriceMismatched")
 					.withArgs(dummyNft.address, tokenId, value);
 			});
 
@@ -378,7 +378,7 @@ describe("Markeplace", function () {
 				const promise = marketplace.connect(user2).updateListing(dummyNft.address, tokenId, newTokenPrice);
 
 				await expect(promise)
-					.to.be.revertedWithCustomError(marketplace, "SpenderNotNftOwner")
+					.to.be.revertedWithCustomError(marketplace, "NftOwnerMismatched")
 					.withArgs(user2.address);
 			});
 
