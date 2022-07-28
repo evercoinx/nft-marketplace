@@ -92,6 +92,19 @@ describe("Markeplace", function () {
 				await expect(promise).to.be.revertedWithCustomError(marketplace, "PriceNotPositive").withArgs(0);
 			});
 
+			it("Should reject if called along with sending ether", async function () {
+				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+
+				const promise = marketplace
+					.connect(user)
+					.listToken(dummyNft.address, tokenId, tokenPrice, { value: 1 });
+				await expect(promise).to.be.rejected;
+			});
+
 			it("Shouldn't revert if called by the right parameters", async function () {
 				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
@@ -163,6 +176,18 @@ describe("Markeplace", function () {
 				await expect(promise)
 					.to.be.revertedWithCustomError(marketplace, "TokenNotListed")
 					.withArgs(dummyNft.address, tokenId);
+			});
+
+			it("Should reject if called along with sending ether", async function () {
+				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				const promise = marketplace.connect(user).delistToken(dummyNft.address, tokenId, { value: 1 });
+				await expect(promise).to.be.rejected;
 			});
 
 			it("Shouldn't revert if called with the right parameters", async function () {
@@ -421,6 +446,21 @@ describe("Markeplace", function () {
 					.withArgs(newTokenPrice);
 			});
 
+			it("Should reject if called along with sending ether", async function () {
+				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				const newTokenPrice = tokenPrice.mul(2);
+				const promise = marketplace
+					.connect(user)
+					.updateListing(dummyNft.address, tokenId, newTokenPrice, { value: 1 });
+				await expect(promise).to.be.rejected;
+			});
+
 			it("Shouldn't revert if called with the right parameters", async function () {
 				const { marketplace, dummyNft, user, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
@@ -514,6 +554,20 @@ describe("Markeplace", function () {
 
 				const promise = marketplace.connect(user).withdrawPayments(user.address);
 				await expect(promise).to.be.revertedWithCustomError(marketplace, "WithdrawalTooEarly");
+			});
+
+			it("Should reject if called along with sending ether", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalWaitPeriod } =
+					await loadFixture(deployMarketplaceFixture);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+
+				await time.increase(withdrawalWaitPeriod);
+
+				const promise = marketplace.connect(user).withdrawPayments(user.address, { value: 1 });
+				await expect(promise).to.be.rejected;
 			});
 
 			it("Shouldn't revert if called from a payee account after finishing the withdrawal wait period", async function () {
@@ -625,6 +679,13 @@ describe("Markeplace", function () {
 				await expect(promise).to.be.revertedWith("Pausable: paused");
 			});
 
+			it("Should reject if called along with sending ether", async function () {
+				const { marketplace } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.pause({ value: 1 });
+				await expect(promise).to.be.rejected;
+			});
+
 			it("Shouldn't revert if called from the owner account", async function () {
 				const { marketplace } = await loadFixture(deployMarketplaceFixture);
 
@@ -710,6 +771,15 @@ describe("Markeplace", function () {
 				await expect(promise).to.be.revertedWith("Pausable: not paused");
 			});
 
+			it("Should reject if called along with sending ether", async function () {
+				const { marketplace } = await loadFixture(deployMarketplaceFixture);
+
+				await marketplace.pause();
+
+				const promise = marketplace.unpause({ value: 1 });
+				await expect(promise).to.be.rejected;
+			});
+
 			it("Shouldn't revert if called from the owner account", async function () {
 				const { marketplace } = await loadFixture(deployMarketplaceFixture);
 
@@ -776,18 +846,17 @@ describe("Markeplace", function () {
 	});
 
 	describe("Fallback", function () {
-		it("Should revert without a reason if an account sends ether to the contract", async function () {
+		it("Should revert without a reason if sending ether to the contract", async function () {
 			const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
 
 			const promise = user.sendTransaction({
 				to: marketplace.address,
 				value: ethers.utils.parseEther("1"),
 			});
-
 			await expect(promise).to.be.revertedWithoutReason();
 		});
 
-		it("Should revert without a reason if an account calls a non-existing method on the contract", async function () {
+		it("Should revert without a reason if calling a non-existing method on the contract", async function () {
 			const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
 			const iface = new ethers.utils.Interface(["function foobar()"]);
 
@@ -795,17 +864,15 @@ describe("Markeplace", function () {
 				to: marketplace.address,
 				data: iface.encodeFunctionData("foobar"),
 			});
-
 			await expect(promise).to.be.revertedWithoutReason();
 		});
 
-		it("Should revert without a reason if an account sends no ether and no data to the contract", async function () {
+		it("Should revert without a reason if sending no ether and no data to the contract", async function () {
 			const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
 
 			const promise = user.sendTransaction({
 				to: marketplace.address,
 			});
-
 			await expect(promise).to.be.revertedWithoutReason();
 		});
 	});
