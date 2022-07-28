@@ -11,6 +11,7 @@ error OperatorNotApproved();
 error NftOwnerMismatched(address spender);
 error PurchaseForbidden(address buyer);
 error WithdrawalForbidden(address payee);
+error WithdrawalTooEarly(address payee, uint256 currentTimestamp);
 error TokenAlreadyListed(address tokenContract, uint256 tokenId);
 error TokenNotListed(address tokenContract, uint256 tokenId);
 error ListingPriceMismatched(address tokenContract, uint256 tokenId, uint256 price);
@@ -27,6 +28,9 @@ contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 	event TokenBought(address indexed buyer, address indexed tokenContract, uint256 indexed tokenId, uint256 price);
 	event PaymentsWithdrawn(address indexed payee, uint256 amount);
 
+	uint256 constant withdrawalWaitPeriod = 2 days;
+
+	mapping(address => uint256) private _requestedWithdrawals;
 	mapping(address => mapping(uint256 => Listing)) private _listings;
 
 	modifier isNftOwner(
@@ -113,6 +117,8 @@ contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 		}
 
 		super._asyncTransfer(listing.seller, msg.value);
+
+		_requestedWithdrawals[listing.seller] = block.timestamp;
 		delete _listings[tokenContract][tokenId];
 
 		nft.safeTransferFrom(listing.seller, msg.sender, tokenId);
@@ -123,6 +129,12 @@ contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 		if (msg.sender != payee && msg.sender != super.owner()) {
 			revert WithdrawalForbidden(msg.sender);
 		}
+
+		if (_requestedWithdrawals[payee] + withdrawalWaitPeriod >= block.timestamp) {
+			revert WithdrawalTooEarly(msg.sender, block.timestamp);
+		}
+
+		delete _requestedWithdrawals[payee];
 
 		uint256 amount = super.payments(payee);
 		super.withdrawPayments(payee);
