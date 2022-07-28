@@ -11,6 +11,9 @@ describe("Markeplace", function () {
 		const DummyNft = await ethers.getContractFactory("DummyNft");
 		const dummyNft = await DummyNft.deploy();
 
+		const DummyFt = await ethers.getContractFactory("DummyFt");
+		const dummyFt = await DummyFt.deploy(1_000_000);
+
 		const [deployer, user, user2] = await ethers.getSigners();
 		const tokenId = 0;
 		const tokenPrice = ethers.utils.parseEther("0.1");
@@ -20,6 +23,7 @@ describe("Markeplace", function () {
 		return {
 			marketplace,
 			dummyNft,
+			dummyFt,
 			deployer,
 			user,
 			user2,
@@ -90,6 +94,13 @@ describe("Markeplace", function () {
 
 				const promise = marketplace.connect(user).listToken(dummyNft.address, tokenId, 0);
 				await expect(promise).to.be.revertedWithCustomError(marketplace, "PriceNotPositive").withArgs(0);
+			});
+
+			it("Should revert without a reason if called with a non-NFT contract", async function () {
+				const { marketplace, dummyFt, user, tokenId, tokenPrice } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.connect(user).listToken(dummyFt.address, tokenId, tokenPrice);
+				await expect(promise).to.be.revertedWithoutReason();
 			});
 
 			it("Should reject if called along with sending ether", async function () {

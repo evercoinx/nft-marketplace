@@ -13,9 +13,9 @@ error NftOwnerMismatched(address spender);
 error PurchaseForbidden(address buyer);
 error WithdrawalForbidden(address payee);
 error WithdrawalTooEarly(address payee, uint256 currentTimestamp);
-error TokenAlreadyListed(address tokenContract, uint256 tokenId);
-error TokenNotListed(address tokenContract, uint256 tokenId);
-error ListingPriceMismatched(address tokenContract, uint256 tokenId, uint256 price);
+error TokenAlreadyListed(IERC721 tokenContract, uint256 tokenId);
+error TokenNotListed(IERC721 tokenContract, uint256 tokenId);
+error ListingPriceMismatched(IERC721 tokenContract, uint256 tokenId, uint256 price);
 error PriceNotPositive(uint256 price);
 
 contract Marketplace is
@@ -30,28 +30,27 @@ contract Marketplace is
 		address seller;
 	}
 
-	event TokenListed(address indexed seller, address indexed tokenContract, uint256 indexed tokenId, uint256 price);
-	event TokenDelisted(address indexed seller, address indexed tokenContract, uint256 indexed tokenId);
-	event TokenBought(address indexed buyer, address indexed tokenContract, uint256 indexed tokenId, uint256 price);
+	event TokenListed(address indexed seller, IERC721 indexed tokenContract, uint256 indexed tokenId, uint256 price);
+	event TokenDelisted(address indexed seller, IERC721 indexed tokenContract, uint256 indexed tokenId);
+	event TokenBought(address indexed buyer, IERC721 indexed tokenContract, uint256 indexed tokenId, uint256 price);
 	event PaymentsWithdrawn(address indexed payee, uint256 amount);
 
 	uint256 public withdrawalWaitPeriod;
 	mapping(address => uint256) private _requestedWithdrawals;
-	mapping(address => mapping(uint256 => Listing)) private _listings;
+	mapping(IERC721 => mapping(uint256 => Listing)) private _listings;
 
 	modifier isNftOwner(
-		address tokenContract,
+		IERC721 tokenContract,
 		uint256 tokenId,
 		address spender
 	) {
-		IERC721 nft = IERC721(tokenContract);
-		if (nft.ownerOf(tokenId) != spender) {
+		if (tokenContract.ownerOf(tokenId) != spender) {
 			revert NftOwnerMismatched(spender);
 		}
 		_;
 	}
 
-	modifier isListed(address tokenContract, uint256 tokenId) {
+	modifier isListed(IERC721 tokenContract, uint256 tokenId) {
 		Listing memory listing = _listings[tokenContract][tokenId];
 		if (listing.price <= 0) {
 			revert TokenNotListed(tokenContract, tokenId);
@@ -59,9 +58,8 @@ contract Marketplace is
 		_;
 	}
 
-	modifier isApproved(address tokenContract, uint256 tokenId) {
-		IERC721 nft = IERC721(tokenContract);
-		if (nft.getApproved(tokenId) != address(this)) {
+	modifier isApproved(IERC721 tokenContract, uint256 tokenId) {
+		if (tokenContract.getApproved(tokenId) != address(this)) {
 			revert OperatorNotApproved();
 		}
 		_;
@@ -82,7 +80,7 @@ contract Marketplace is
 	}
 
 	function listToken(
-		address tokenContract,
+		IERC721 tokenContract,
 		uint256 tokenId,
 		uint256 price
 	) external nonReentrant isNftOwner(tokenContract, tokenId, msg.sender) isApproved(tokenContract, tokenId) {
@@ -99,7 +97,7 @@ contract Marketplace is
 		emit TokenListed(msg.sender, tokenContract, tokenId, price);
 	}
 
-	function delistToken(address tokenContract, uint256 tokenId)
+	function delistToken(IERC721 tokenContract, uint256 tokenId)
 		external
 		isListed(tokenContract, tokenId)
 		nonReentrant
@@ -109,7 +107,7 @@ contract Marketplace is
 		emit TokenDelisted(msg.sender, tokenContract, tokenId);
 	}
 
-	function buyToken(address tokenContract, uint256 tokenId)
+	function buyToken(IERC721 tokenContract, uint256 tokenId)
 		external
 		payable
 		whenNotPaused
@@ -122,8 +120,7 @@ contract Marketplace is
 			revert ListingPriceMismatched(tokenContract, tokenId, msg.value);
 		}
 
-		IERC721 nft = IERC721(tokenContract);
-		if (nft.ownerOf(tokenId) == msg.sender) {
+		if (tokenContract.ownerOf(tokenId) == msg.sender) {
 			revert PurchaseForbidden(msg.sender);
 		}
 
@@ -132,7 +129,7 @@ contract Marketplace is
 		_requestedWithdrawals[listing.seller] = block.timestamp;
 		delete _listings[tokenContract][tokenId];
 
-		nft.safeTransferFrom(listing.seller, msg.sender, tokenId);
+		tokenContract.safeTransferFrom(listing.seller, msg.sender, tokenId);
 		emit TokenBought(msg.sender, tokenContract, tokenId, listing.price);
 	}
 
@@ -153,7 +150,7 @@ contract Marketplace is
 	}
 
 	function updateListing(
-		address tokenContract,
+		IERC721 tokenContract,
 		uint256 tokenId,
 		uint256 newPrice
 	) external isListed(tokenContract, tokenId) nonReentrant isNftOwner(tokenContract, tokenId, msg.sender) {
@@ -173,7 +170,7 @@ contract Marketplace is
 		super._unpause();
 	}
 
-	function getListing(address tokenContract, uint256 tokenId) external view returns (Listing memory) {
+	function getListing(IERC721 tokenContract, uint256 tokenId) external view returns (Listing memory) {
 		return _listings[tokenContract][tokenId];
 	}
 }
