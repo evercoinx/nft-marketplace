@@ -28,7 +28,7 @@ contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 	event TokenBought(address indexed buyer, address indexed tokenContract, uint256 indexed tokenId, uint256 price);
 	event PaymentsWithdrawn(address indexed payee, uint256 amount);
 
-	uint256 constant withdrawalWaitPeriod = 2 days;
+	uint256 public withdrawalWaitPeriod;
 
 	mapping(address => uint256) private _requestedWithdrawals;
 	mapping(address => mapping(uint256 => Listing)) private _listings;
@@ -66,10 +66,12 @@ contract Marketplace is Initializable, OwnableUpgradeable, PausableUpgradeable, 
 		_disableInitializers();
 	}
 
-	function initialize() public initializer {
+	function initialize(uint256 withdrawalWaitPeriod_) public initializer {
 		OwnableUpgradeable.__Ownable_init();
 		PausableUpgradeable.__Pausable_init();
 		PullPaymentUpgradeable.__PullPayment_init();
+
+		withdrawalWaitPeriod = withdrawalWaitPeriod_;
 	}
 
 	function listToken(

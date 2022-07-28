@@ -7,7 +7,8 @@
 		"ts:format": "prettier --write \"scripts/**/*.ts\" \"tests/**/*.ts\"",
 		"ts:lint": "eslint --fix \"{scripts,tests}/**/*.ts\"",
 		"compile": "hardhat compile",
-		"test": "hardhat test"
+		"test": "hardhat test",
+		"coverage": "hardhat coverage"
 	},
 	"repository": {
 		"type": "git",
