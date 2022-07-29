@@ -36,7 +36,7 @@ contract Marketplace is
 	event PaymentsWithdrawn(address indexed payee, uint256 amount);
 
 	uint256 public withdrawalWaitPeriod;
-	mapping(address => uint256) private _requestedWithdrawals;
+	mapping(address => uint256) public paymentDates;
 	mapping(IERC721 => mapping(uint256 => Listing)) private _listings;
 
 	modifier isNftOwner(
@@ -126,7 +126,7 @@ contract Marketplace is
 
 		super._asyncTransfer(listing.seller, msg.value);
 
-		_requestedWithdrawals[listing.seller] = block.timestamp;
+		paymentDates[listing.seller] = block.timestamp + withdrawalWaitPeriod;
 		delete _listings[tokenContract][tokenId];
 
 		tokenContract.safeTransferFrom(listing.seller, msg.sender, tokenId);
@@ -138,11 +138,11 @@ contract Marketplace is
 			revert WithdrawalForbidden(msg.sender);
 		}
 
-		if (_requestedWithdrawals[payee] + withdrawalWaitPeriod >= block.timestamp) {
+		if (block.timestamp <= paymentDates[payee]) {
 			revert WithdrawalTooEarly(msg.sender, block.timestamp);
 		}
 
-		delete _requestedWithdrawals[payee];
+		delete paymentDates[payee];
 
 		uint256 amount = super.payments(payee);
 		super.withdrawPayments(payee);

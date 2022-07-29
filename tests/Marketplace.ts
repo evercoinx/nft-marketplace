@@ -51,6 +51,22 @@ describe("Markeplace", function () {
 			const actual = await marketplace.withdrawalWaitPeriod();
 			expect(actual).to.be.equal(withdrawalWaitPeriod);
 		});
+
+		it("Should return the zero listing for an account which haven't listed a token yet", async function () {
+			const { marketplace, dummyNft, tokenId } = await loadFixture(deployMarketplaceFixture);
+
+			const actual = await marketplace.getListing(dummyNft.address, tokenId);
+			expect(actual).to.contain.keys("price", "seller");
+			expect(actual.price).to.be.equal(0);
+			expect(actual.seller).to.be.equal(ethers.constants.AddressZero);
+		});
+
+		it("Should return the zero payment date for an account which haven't bought a token yet", async function () {
+			const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
+
+			const actual = await marketplace.paymentDates(user.address);
+			expect(actual).to.be.equal(0);
+		});
 	});
 
 	describe("List a token", function () {
@@ -371,7 +387,7 @@ describe("Markeplace", function () {
 				expect(actual.seller).to.be.equal(ethers.constants.AddressZero);
 			});
 
-			it("Should return the corresponding pending payments after selling the token", async function () {
+			it("Should return the right pending payments after selling the token", async function () {
 				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
@@ -383,6 +399,20 @@ describe("Markeplace", function () {
 
 				const actual = await marketplace.payments(user.address);
 				expect(actual).to.be.equal(tokenPrice);
+			});
+
+			it("Should return the right payment date after selling the token", async function () {
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalWaitPeriod } =
+					await loadFixture(deployMarketplaceFixture);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
+
+				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+				const paymentDate = (await time.latest()) + withdrawalWaitPeriod;
+
+				const actual = await marketplace.paymentDates(user.address);
+				expect(actual).to.be.equal(paymentDate);
 			});
 
 			it("Should change the token owner after selling the token", async function () {
