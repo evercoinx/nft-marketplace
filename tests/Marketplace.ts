@@ -4,21 +4,18 @@ import { ethers, upgrades } from "hardhat";
 
 describe("Markeplace", function () {
 	async function deployMarketplaceFixture() {
-		const withdrawalWaitPeriod = 2 * 24 * 60 * 60; // 2 days
-		const Marketplace = await ethers.getContractFactory("Marketplace");
-		const marketplace = await upgrades.deployProxy(Marketplace, [withdrawalWaitPeriod]);
+		const [deployer, user, user2] = await ethers.getSigners();
 
 		const DummyNft = await ethers.getContractFactory("DummyNft");
 		const dummyNft = await DummyNft.deploy();
+		await dummyNft.mint(user.address, "https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pYrDKEoiu");
 
 		const DummyFt = await ethers.getContractFactory("DummyFt");
 		const dummyFt = await DummyFt.deploy(1_000_000);
 
-		const [deployer, user, user2] = await ethers.getSigners();
-		const tokenId = 0;
-		const tokenPrice = ethers.utils.parseEther("0.1");
-
-		await dummyNft.mint(user.address, "https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pYrDKEoiu");
+		const withdrawalWaitPeriod = 2 * 24 * 60 * 60; // 2 days
+		const Marketplace = await ethers.getContractFactory("Marketplace");
+		const marketplace = await upgrades.deployProxy(Marketplace, [withdrawalWaitPeriod]);
 
 		return {
 			marketplace,
@@ -28,17 +25,17 @@ describe("Markeplace", function () {
 			user,
 			user2,
 			withdrawalWaitPeriod,
-			tokenId,
-			tokenPrice,
+			tokenId: 0,
+			tokenPrice: ethers.utils.parseEther("0.1"),
 		};
 	}
 
 	describe("Deploy the contract", function () {
-		it("Should return the right withdrawal wait period", async function () {
-			const { marketplace, withdrawalWaitPeriod } = await loadFixture(deployMarketplaceFixture);
+		it("Should return the right owner", async function () {
+			const { marketplace, deployer } = await loadFixture(deployMarketplaceFixture);
 
-			const actual = await marketplace.withdrawalWaitPeriod();
-			expect(actual).to.be.equal(withdrawalWaitPeriod);
+			const actual = await marketplace.owner();
+			expect(actual).to.be.equal(deployer.address);
 		});
 
 		it("Should return the right pausable state", async function () {
@@ -46,6 +43,13 @@ describe("Markeplace", function () {
 
 			const actual = await marketplace.paused();
 			expect(actual).to.be.false;
+		});
+
+		it("Should return the right withdrawal wait period", async function () {
+			const { marketplace, withdrawalWaitPeriod } = await loadFixture(deployMarketplaceFixture);
+
+			const actual = await marketplace.withdrawalWaitPeriod();
+			expect(actual).to.be.equal(withdrawalWaitPeriod);
 		});
 	});
 
@@ -668,6 +672,93 @@ describe("Markeplace", function () {
 
 				const promise = await marketplace.connect(user).withdrawPayments(user.address);
 				await expect(promise).to.changeEtherBalance(user, tokenPrice);
+			});
+		});
+	});
+
+	describe("Renounce the contract's ownership", function () {
+		describe("Validations", function () {
+			it("Should revert with the right reason if called from an non-owner account", async function () {
+				const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.connect(user).renounceOwnership();
+				await expect(promise).to.be.revertedWith("Ownable: caller is not the owner");
+			});
+
+			it("Shouldn't revert if called from the owner account", async function () {
+				const { marketplace } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.renounceOwnership();
+				await expect(promise).not.to.be.reverted;
+			});
+		});
+
+		describe("Events", function () {
+			it("Should emit an event when renouncing the ownership", async function () {
+				const { marketplace, deployer } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.renounceOwnership();
+				await expect(promise)
+					.to.emit(marketplace, "OwnershipTransferred")
+					.withArgs(deployer.address, ethers.constants.AddressZero);
+			});
+		});
+
+		describe("Post actions", function () {
+			it("Should return no owner after renouncing the ownership", async function () {
+				const { marketplace } = await loadFixture(deployMarketplaceFixture);
+
+				await marketplace.renounceOwnership();
+
+				const actual = await marketplace.owner();
+				expect(actual).to.be.equal(ethers.constants.AddressZero);
+			});
+		});
+	});
+
+	describe("Transfer the contract's ownership", function () {
+		describe("Validations", function () {
+			it("Should revert with the right reason if called from an non-owner account", async function () {
+				const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.connect(user).transferOwnership(user.address);
+				await expect(promise).to.be.revertedWith("Ownable: caller is not the owner");
+			});
+
+			it("Should revert with the right reason if setting the owner with the zero address", async function () {
+				const { marketplace } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.transferOwnership(ethers.constants.AddressZero);
+				await expect(promise).to.be.revertedWith("Ownable: new owner is the zero address");
+			});
+
+			it("Shouldn't revert if called with the right parameter", async function () {
+				const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.transferOwnership(user.address);
+				await expect(promise).not.to.be.reverted;
+			});
+		});
+
+		describe("Events", function () {
+			it("Should emit an event when transferring the ownership", async function () {
+				const { marketplace, deployer, user } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.transferOwnership(user.address);
+				await expect(promise)
+					.to.emit(marketplace, "OwnershipTransferred")
+					.withArgs(deployer.address, user.address);
+			});
+		});
+
+		describe("Post actions", function () {
+			it("Should return the right owner after transferring the ownership", async function () {
+				const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
+
+				await marketplace.transferOwnership(user.address);
+
+				const actual = await marketplace.owner();
+				expect(actual).to.be.equal(user.address);
 			});
 		});
 	});
