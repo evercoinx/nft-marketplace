@@ -16,7 +16,7 @@ error WithdrawalTooEarly(address payee, uint256 currentTimestamp);
 error TokenAlreadyListed(IERC721 tokenContract, uint256 tokenId);
 error TokenNotListed(IERC721 tokenContract, uint256 tokenId);
 error ListingPriceMismatched(IERC721 tokenContract, uint256 tokenId, uint256 price);
-error PriceNotPositive(uint256 price);
+error ZeroPrice();
 
 contract Marketplace is
 	Initializable,
@@ -35,7 +35,7 @@ contract Marketplace is
 	event TokenBought(address indexed buyer, IERC721 indexed tokenContract, uint256 indexed tokenId, uint256 price);
 	event PaymentsWithdrawn(address indexed payee, uint256 amount);
 
-	uint256 public withdrawalWaitPeriod;
+	uint256 public withdrawalPeriod;
 	mapping(address => uint256) public paymentDates;
 	mapping(IERC721 => mapping(uint256 => Listing)) private _listings;
 
@@ -70,13 +70,13 @@ contract Marketplace is
 		_disableInitializers();
 	}
 
-	function initialize(uint256 withdrawalWaitPeriod_) public initializer {
+	function initialize(uint256 withdrawalPeriod_) public initializer {
 		OwnableUpgradeable.__Ownable_init();
 		PausableUpgradeable.__Pausable_init();
 		ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
 		PullPaymentUpgradeable.__PullPayment_init();
 
-		withdrawalWaitPeriod = withdrawalWaitPeriod_;
+		withdrawalPeriod = withdrawalPeriod_;
 	}
 
 	function listToken(
@@ -85,7 +85,7 @@ contract Marketplace is
 		uint256 price
 	) external nonReentrant isNftOwner(tokenContract, tokenId, msg.sender) isApproved(tokenContract, tokenId) {
 		if (price <= 0) {
-			revert PriceNotPositive(price);
+			revert ZeroPrice();
 		}
 
 		Listing memory listing = _listings[tokenContract][tokenId];
@@ -126,7 +126,7 @@ contract Marketplace is
 
 		super._asyncTransfer(listing.seller, msg.value);
 
-		paymentDates[listing.seller] = block.timestamp + withdrawalWaitPeriod;
+		paymentDates[listing.seller] = block.timestamp + withdrawalPeriod;
 		delete _listings[tokenContract][tokenId];
 
 		tokenContract.safeTransferFrom(listing.seller, msg.sender, tokenId);
@@ -155,7 +155,7 @@ contract Marketplace is
 		uint256 newPrice
 	) external isListed(tokenContract, tokenId) nonReentrant isNftOwner(tokenContract, tokenId, msg.sender) {
 		if (newPrice == 0) {
-			revert PriceNotPositive(newPrice);
+			revert ZeroPrice();
 		}
 
 		_listings[tokenContract][tokenId].price = newPrice;

@@ -13,9 +13,9 @@ describe("Markeplace", function () {
 		const DummyFt = await ethers.getContractFactory("DummyFt");
 		const dummyFt = await DummyFt.deploy(1_000_000);
 
-		const withdrawalWaitPeriod = 2 * 24 * 60 * 60; // 2 days
+		const withdrawalPeriod = 2 * 24 * 60 * 60; // 2 days
 		const Marketplace = await ethers.getContractFactory("Marketplace");
-		const marketplace = await upgrades.deployProxy(Marketplace, [withdrawalWaitPeriod]);
+		const marketplace = await upgrades.deployProxy(Marketplace, [withdrawalPeriod]);
 
 		return {
 			marketplace,
@@ -24,7 +24,7 @@ describe("Markeplace", function () {
 			deployer,
 			user,
 			user2,
-			withdrawalWaitPeriod,
+			withdrawalPeriod,
 			tokenId: 0,
 			tokenPrice: ethers.utils.parseEther("0.1"),
 		};
@@ -46,10 +46,10 @@ describe("Markeplace", function () {
 		});
 
 		it("Should return the right withdrawal wait period", async function () {
-			const { marketplace, withdrawalWaitPeriod } = await loadFixture(deployMarketplaceFixture);
+			const { marketplace, withdrawalPeriod } = await loadFixture(deployMarketplaceFixture);
 
-			const actual = await marketplace.withdrawalWaitPeriod();
-			expect(actual).to.be.equal(withdrawalWaitPeriod);
+			const actual = await marketplace.withdrawalPeriod();
+			expect(actual).to.be.equal(withdrawalPeriod);
 		});
 
 		it("Should return the zero listing for an account which haven't listed a token yet", async function () {
@@ -107,13 +107,13 @@ describe("Markeplace", function () {
 					.withArgs(dummyNft.address, tokenId);
 			});
 
-			it("Should revert with the right error if called with the price equals to zero wei", async function () {
+			it("Should revert with the right error if called with the zero price", async function () {
 				const { marketplace, dummyNft, user, tokenId } = await loadFixture(deployMarketplaceFixture);
 
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 
 				const promise = marketplace.connect(user).listToken(dummyNft.address, tokenId, 0);
-				await expect(promise).to.be.revertedWithCustomError(marketplace, "PriceNotPositive").withArgs(0);
+				await expect(promise).to.be.revertedWithCustomError(marketplace, "ZeroPrice").withArgs();
 			});
 
 			it("Should revert without a reason if called with a non-NFT contract", async function () {
@@ -402,14 +402,15 @@ describe("Markeplace", function () {
 			});
 
 			it("Should return the right payment date after selling the token", async function () {
-				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalWaitPeriod } =
-					await loadFixture(deployMarketplaceFixture);
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalPeriod } = await loadFixture(
+					deployMarketplaceFixture,
+				);
 
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
 
 				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
-				const paymentDate = (await time.latest()) + withdrawalWaitPeriod;
+				const paymentDate = (await time.latest()) + withdrawalPeriod;
 
 				const actual = await marketplace.paymentDates(user.address);
 				expect(actual).to.be.equal(paymentDate);
@@ -483,12 +484,9 @@ describe("Markeplace", function () {
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
 
-				const newTokenPrice = 0;
-				const promise = marketplace.connect(user).updateListing(dummyNft.address, tokenId, newTokenPrice);
+				const promise = marketplace.connect(user).updateListing(dummyNft.address, tokenId, 0);
 
-				await expect(promise)
-					.to.be.revertedWithCustomError(marketplace, "PriceNotPositive")
-					.withArgs(newTokenPrice);
+				await expect(promise).to.be.revertedWithCustomError(marketplace, "ZeroPrice").withArgs();
 			});
 
 			it("Should reject if called along with sending ether", async function () {
@@ -588,70 +586,74 @@ describe("Markeplace", function () {
 			});
 
 			it("Should revert with the right error if called from a payee account before finishing the withdrawal wait period", async function () {
-				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalWaitPeriod } =
-					await loadFixture(deployMarketplaceFixture);
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalPeriod } = await loadFixture(
+					deployMarketplaceFixture,
+				);
 
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
 				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
 
-				await time.increase(withdrawalWaitPeriod - 1);
+				await time.increase(withdrawalPeriod - 1);
 
 				const promise = marketplace.connect(user).withdrawPayments(user.address);
 				await expect(promise).to.be.revertedWithCustomError(marketplace, "WithdrawalTooEarly");
 			});
 
 			it("Should reject if called along with sending ether", async function () {
-				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalWaitPeriod } =
-					await loadFixture(deployMarketplaceFixture);
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalPeriod } = await loadFixture(
+					deployMarketplaceFixture,
+				);
 
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
 				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
 
-				await time.increase(withdrawalWaitPeriod);
+				await time.increase(withdrawalPeriod);
 
 				const promise = marketplace.connect(user).withdrawPayments(user.address, { value: 1 });
 				await expect(promise).to.be.rejected;
 			});
 
 			it("Shouldn't revert if called from a payee account after finishing the withdrawal wait period", async function () {
-				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalWaitPeriod } =
-					await loadFixture(deployMarketplaceFixture);
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalPeriod } = await loadFixture(
+					deployMarketplaceFixture,
+				);
 
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
 				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
 
-				await time.increase(withdrawalWaitPeriod);
+				await time.increase(withdrawalPeriod);
 
 				const promise = marketplace.connect(user).withdrawPayments(user.address);
 				await expect(promise).not.be.reverted;
 			});
 
 			it("Shouldn't revert if called from the owner account after finishing the withdrawal wait period", async function () {
-				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalWaitPeriod } =
-					await loadFixture(deployMarketplaceFixture);
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalPeriod } = await loadFixture(
+					deployMarketplaceFixture,
+				);
 
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
 				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
 
-				await time.increase(withdrawalWaitPeriod);
+				await time.increase(withdrawalPeriod);
 
 				const promise = marketplace.withdrawPayments(user.address);
 				await expect(promise).not.be.reverted;
 			});
 
 			it("Shouldn't revert if called from a payee account having no payments", async function () {
-				const { marketplace, dummyNft, user, tokenId, tokenPrice, withdrawalWaitPeriod } = await loadFixture(
+				const { marketplace, dummyNft, user, tokenId, tokenPrice, withdrawalPeriod } = await loadFixture(
 					deployMarketplaceFixture,
 				);
 
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
 
-				await time.increase(withdrawalWaitPeriod);
+				await time.increase(withdrawalPeriod);
 
 				const promise = marketplace.connect(user).withdrawPayments(user.address);
 				await expect(promise).not.to.be.reverted;
@@ -660,14 +662,15 @@ describe("Markeplace", function () {
 
 		describe("Events", function () {
 			it("Should emit an event when withdrawing the payments", async function () {
-				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalWaitPeriod } =
-					await loadFixture(deployMarketplaceFixture);
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalPeriod } = await loadFixture(
+					deployMarketplaceFixture,
+				);
 
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
 				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
 
-				await time.increase(withdrawalWaitPeriod);
+				await time.increase(withdrawalPeriod);
 
 				const promise = marketplace.connect(user).withdrawPayments(user.address);
 				await expect(promise).to.emit(marketplace, "PaymentsWithdrawn").withArgs(user.address, tokenPrice);
@@ -676,14 +679,15 @@ describe("Markeplace", function () {
 
 		describe("Post actions", function () {
 			it("Should return empty payments after withdrawing the payment", async function () {
-				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalWaitPeriod } =
-					await loadFixture(deployMarketplaceFixture);
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalPeriod } = await loadFixture(
+					deployMarketplaceFixture,
+				);
 
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
 				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
 
-				await time.increase(withdrawalWaitPeriod);
+				await time.increase(withdrawalPeriod);
 				await marketplace.connect(user).withdrawPayments(user.address);
 
 				const actual = await marketplace.payments(user.address);
@@ -691,14 +695,15 @@ describe("Markeplace", function () {
 			});
 
 			it("Should change the user's balance after withdrawing the payment", async function () {
-				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalWaitPeriod } =
-					await loadFixture(deployMarketplaceFixture);
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalPeriod } = await loadFixture(
+					deployMarketplaceFixture,
+				);
 
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
 				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
 
-				await time.increase(withdrawalWaitPeriod);
+				await time.increase(withdrawalPeriod);
 
 				const promise = await marketplace.connect(user).withdrawPayments(user.address);
 				await expect(promise).to.changeEtherBalance(user, tokenPrice);
@@ -960,8 +965,9 @@ describe("Markeplace", function () {
 			});
 
 			it("Should allow users to withdraw payments after unpausing the contract", async function () {
-				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalWaitPeriod } =
-					await loadFixture(deployMarketplaceFixture);
+				const { marketplace, dummyNft, user, user2, tokenId, tokenPrice, withdrawalPeriod } = await loadFixture(
+					deployMarketplaceFixture,
+				);
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice);
 				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
@@ -969,7 +975,7 @@ describe("Markeplace", function () {
 				await marketplace.pause();
 				await marketplace.unpause();
 
-				await time.increase(withdrawalWaitPeriod);
+				await time.increase(withdrawalPeriod);
 
 				const promise = marketplace.connect(user).withdrawPayments(user.address);
 				await expect(promise).not.to.be.reverted;
