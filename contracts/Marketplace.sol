@@ -39,7 +39,7 @@ contract Marketplace is
 	mapping(address => uint256) public paymentDates;
 	mapping(IERC721 => mapping(uint256 => Listing)) private _listings;
 
-	modifier isNftOwner(
+	modifier isNFTOwner(
 		IERC721 tokenContract,
 		uint256 tokenId,
 		address spender
@@ -83,8 +83,8 @@ contract Marketplace is
 		IERC721 tokenContract,
 		uint256 tokenId,
 		uint256 price
-	) external nonReentrant isNftOwner(tokenContract, tokenId, msg.sender) isApproved(tokenContract, tokenId) {
-		if (price <= 0) {
+	) external nonReentrant isNFTOwner(tokenContract, tokenId, msg.sender) isApproved(tokenContract, tokenId) {
+		if (price == 0) {
 			revert ZeroPrice();
 		}
 
@@ -101,7 +101,7 @@ contract Marketplace is
 		external
 		isListed(tokenContract, tokenId)
 		nonReentrant
-		isNftOwner(tokenContract, tokenId, msg.sender)
+		isNFTOwner(tokenContract, tokenId, msg.sender)
 	{
 		delete _listings[tokenContract][tokenId];
 		emit TokenDelisted(msg.sender, tokenContract, tokenId);
@@ -153,7 +153,7 @@ contract Marketplace is
 		IERC721 tokenContract,
 		uint256 tokenId,
 		uint256 newPrice
-	) external isListed(tokenContract, tokenId) nonReentrant isNftOwner(tokenContract, tokenId, msg.sender) {
+	) external isListed(tokenContract, tokenId) nonReentrant isNFTOwner(tokenContract, tokenId, msg.sender) {
 		if (newPrice == 0) {
 			revert ZeroPrice();
 		}

@@ -6,11 +6,11 @@ describe("Markeplace", function () {
 	async function deployMarketplaceFixture() {
 		const [deployer, user, user2] = await ethers.getSigners();
 
-		const DummyNft = await ethers.getContractFactory("DummyNft");
+		const DummyNft = await ethers.getContractFactory("DummyNFT");
 		const dummyNft = await DummyNft.deploy();
 		await dummyNft.mint(user.address, "https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pYrDKEoiu");
 
-		const DummyFt = await ethers.getContractFactory("DummyFt");
+		const DummyFt = await ethers.getContractFactory("DummyFT");
 		const dummyFt = await DummyFt.deploy(1_000_000);
 
 		const withdrawalPeriod = 2 * 24 * 60 * 60; // 2 days
