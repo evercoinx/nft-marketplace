@@ -9,12 +9,13 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/
 import { PullPaymentUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PullPaymentUpgradeable.sol";
 
 error OperatorNotApproved();
-error NftOwnerMismatched(address spender);
+error NFTOwnerMismatched(address spender);
 error PurchaseForbidden(address buyer);
 error WithdrawalForbidden(address payee);
 error WithdrawalTooEarly(address payee, uint256 currentTimestamp);
 error TokenAlreadyListed(IERC721 tokenContract, uint256 tokenId);
 error TokenNotListed(IERC721 tokenContract, uint256 tokenId);
+error ListingFeeMismatched(IERC721 tokenContract, uint256 tokenId, uint256 fee);
 error ListingPriceMismatched(IERC721 tokenContract, uint256 tokenId, uint256 price);
 error ZeroPrice();
 
@@ -35,6 +36,7 @@ contract Marketplace is
 	event TokenBought(address indexed buyer, IERC721 indexed tokenContract, uint256 indexed tokenId, uint256 price);
 	event PaymentsWithdrawn(address indexed payee, uint256 amount);
 
+	uint256 public listingFee;
 	uint256 public withdrawalPeriod;
 	mapping(address => uint256) public paymentDates;
 	mapping(IERC721 => mapping(uint256 => Listing)) private _listings;
@@ -45,7 +47,7 @@ contract Marketplace is
 		address spender
 	) {
 		if (tokenContract.ownerOf(tokenId) != spender) {
-			revert NftOwnerMismatched(spender);
+			revert NFTOwnerMismatched(spender);
 		}
 		_;
 	}
@@ -70,12 +72,13 @@ contract Marketplace is
 		_disableInitializers();
 	}
 
-	function initialize(uint256 withdrawalPeriod_) public initializer {
+	function initialize(uint256 listingFee_, uint256 withdrawalPeriod_) public initializer {
 		OwnableUpgradeable.__Ownable_init();
 		PausableUpgradeable.__Pausable_init();
 		ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
 		PullPaymentUpgradeable.__PullPayment_init();
 
+		listingFee = listingFee_;
 		withdrawalPeriod = withdrawalPeriod_;
 	}
 
@@ -83,9 +86,12 @@ contract Marketplace is
 		IERC721 tokenContract,
 		uint256 tokenId,
 		uint256 price
-	) external nonReentrant isNFTOwner(tokenContract, tokenId, msg.sender) isApproved(tokenContract, tokenId) {
+	) external payable nonReentrant isNFTOwner(tokenContract, tokenId, msg.sender) isApproved(tokenContract, tokenId) {
 		if (price == 0) {
 			revert ZeroPrice();
+		}
+		if (msg.value != listingFee) {
+			revert ListingFeeMismatched(tokenContract, tokenId, msg.value);
 		}
 
 		Listing memory listing = _listings[tokenContract][tokenId];
