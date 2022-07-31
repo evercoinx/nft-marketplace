@@ -9,14 +9,14 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/
 import { PullPaymentUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PullPaymentUpgradeable.sol";
 
 error OperatorNotApproved();
-error NFTOwnerMismatched(address spender);
+error InvalidNFTOwner(address spender);
 error PurchaseForbidden(address buyer);
 error WithdrawalForbidden(address payee);
-error WithdrawalTooEarly(address payee, uint256 currentTimestamp);
+error WithdrawalLocked(address payee, uint256 currentTimestamp, uint256 unlockTimestamp);
 error TokenAlreadyListed(IERC721 tokenContract, uint256 tokenId);
 error TokenNotListed(IERC721 tokenContract, uint256 tokenId);
-error ListingFeeMismatched(IERC721 tokenContract, uint256 tokenId, uint256 fee);
-error ListingPriceMismatched(IERC721 tokenContract, uint256 tokenId, uint256 price);
+error InvalidListingFee(IERC721 tokenContract, uint256 tokenId, uint256 fee);
+error InvalidListingPrice(IERC721 tokenContract, uint256 tokenId, uint256 price);
 error ZeroPrice();
 
 contract Marketplace is
@@ -27,8 +27,8 @@ contract Marketplace is
 	PullPaymentUpgradeable
 {
 	struct Listing {
-		uint256 price;
 		address seller;
+		uint256 price;
 	}
 
 	event TokenListed(address indexed seller, IERC721 indexed tokenContract, uint256 indexed tokenId, uint256 price);
@@ -49,7 +49,7 @@ contract Marketplace is
 		address spender
 	) {
 		if (tokenContract.ownerOf(tokenId) != spender) {
-			revert NFTOwnerMismatched(spender);
+			revert InvalidNFTOwner(spender);
 		}
 		_;
 	}
@@ -93,7 +93,7 @@ contract Marketplace is
 			revert ZeroPrice();
 		}
 		if (msg.value != listingFee) {
-			revert ListingFeeMismatched(tokenContract, tokenId, msg.value);
+			revert InvalidListingFee(tokenContract, tokenId, msg.value);
 		}
 
 		Listing memory listing = _listings[tokenContract][tokenId];
@@ -101,7 +101,12 @@ contract Marketplace is
 			revert TokenAlreadyListed(tokenContract, tokenId);
 		}
 
-		_listings[tokenContract][tokenId] = Listing(price, msg.sender);
+		_listings[tokenContract][tokenId] = Listing({ seller: msg.sender, price: price });
+
+		address owner = super.owner();
+		paymentDates[owner] = block.timestamp;
+
+		super._asyncTransfer(owner, msg.value);
 		emit TokenListed(msg.sender, tokenContract, tokenId, price);
 	}
 
@@ -125,17 +130,17 @@ contract Marketplace is
 	{
 		Listing memory listing = _listings[tokenContract][tokenId];
 		if (listing.price != msg.value) {
-			revert ListingPriceMismatched(tokenContract, tokenId, msg.value);
+			revert InvalidListingPrice(tokenContract, tokenId, msg.value);
 		}
 
 		if (tokenContract.ownerOf(tokenId) == msg.sender) {
 			revert PurchaseForbidden(msg.sender);
 		}
 
-		super._asyncTransfer(listing.seller, msg.value);
-
 		paymentDates[listing.seller] = block.timestamp + withdrawalPeriod;
 		delete _listings[tokenContract][tokenId];
+
+		super._asyncTransfer(listing.seller, msg.value);
 
 		tokenContract.safeTransferFrom(listing.seller, msg.sender, tokenId);
 		emit TokenBought(msg.sender, tokenContract, tokenId, listing.price);
@@ -143,11 +148,11 @@ contract Marketplace is
 
 	function withdrawPayments(address payable payee) public override whenNotPaused {
 		if (msg.sender != payee && msg.sender != super.owner()) {
-			revert WithdrawalForbidden(msg.sender);
+			revert WithdrawalForbidden(payee);
 		}
 
 		if (block.timestamp <= paymentDates[payee]) {
-			revert WithdrawalTooEarly(msg.sender, block.timestamp);
+			revert WithdrawalLocked(payee, block.timestamp, paymentDates[payee]);
 		}
 
 		delete paymentDates[payee];

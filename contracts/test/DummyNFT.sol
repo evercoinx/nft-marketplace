@@ -9,7 +9,7 @@ contract DummyNFT is ERC721URIStorage, Ownable {
 	using Counters for Counters.Counter;
 	Counters.Counter private _tokenIds;
 
-	event TokenMinted(uint256 tokenId);
+	event TokenMinted(uint256 indexed tokenId);
 
 	constructor() ERC721("Dummy NFT", "DNFT") {}
 
