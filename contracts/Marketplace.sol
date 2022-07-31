@@ -35,6 +35,8 @@ contract Marketplace is
 	event TokenDelisted(address indexed seller, IERC721 indexed tokenContract, uint256 indexed tokenId);
 	event TokenBought(address indexed buyer, IERC721 indexed tokenContract, uint256 indexed tokenId, uint256 price);
 	event PaymentsWithdrawn(address indexed payee, uint256 amount);
+	event ListingFeeSet(uint256 listingFee);
+	event WithdrawalPeriodSet(uint256 withdrawalPeriod);
 
 	uint256 public listingFee;
 	uint256 public withdrawalPeriod;
@@ -166,6 +168,16 @@ contract Marketplace is
 
 		_listings[tokenContract][tokenId].price = newPrice;
 		emit TokenListed(msg.sender, tokenContract, tokenId, newPrice);
+	}
+
+	function setListingFee(uint256 listingFee_) external onlyOwner {
+		listingFee = listingFee_;
+		emit ListingFeeSet(listingFee_);
+	}
+
+	function setWithdrawalPeriod(uint256 withdrawalPeriod_) external onlyOwner {
+		withdrawalPeriod = withdrawalPeriod_;
+		emit WithdrawalPeriodSet(withdrawalPeriod_);
 	}
 
 	function pause() external onlyOwner {

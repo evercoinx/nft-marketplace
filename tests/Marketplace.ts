@@ -788,6 +788,86 @@ describe("Markeplace", function () {
 		});
 	});
 
+	describe("Set a listing fee", function () {
+		describe("Validations", function () {
+			it("Should revert with the right reason if called from an non-owner account", async function () {
+				const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.connect(user).setListingFee(0);
+				await expect(promise).to.be.revertedWith("Ownable: caller is not the owner");
+			});
+
+			it("Shouldn't revert if called with the right parameters", async function () {
+				const { marketplace, listingFee } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.setListingFee(listingFee.add(1));
+				await expect(promise).not.be.reverted;
+			});
+		});
+
+		describe("Events", function () {
+			it("Should emit an event when setting a new listing fee", async function () {
+				const { marketplace, listingFee } = await loadFixture(deployMarketplaceFixture);
+
+				const newListingFee = listingFee.add(1);
+				const promise = marketplace.setListingFee(newListingFee);
+				await expect(promise).to.emit(marketplace, "ListingFeeSet").withArgs(newListingFee);
+			});
+		});
+
+		describe("Post actions", function () {
+			it("Should return the right listing fee after setting a new listing fee", async function () {
+				const { marketplace, listingFee } = await loadFixture(deployMarketplaceFixture);
+
+				const newListingFee = listingFee.add(1);
+				await marketplace.setListingFee(listingFee.add(1));
+
+				const actual = await marketplace.listingFee();
+				expect(actual).to.equal(newListingFee);
+			});
+		});
+	});
+
+	describe("Set a withdrawal period", function () {
+		describe("Validations", function () {
+			it("Should revert with the right reason if called from an non-owner account", async function () {
+				const { marketplace, user } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.connect(user).setWithdrawalPeriod(0);
+				await expect(promise).to.be.revertedWith("Ownable: caller is not the owner");
+			});
+
+			it("Shouldn't revert if called with the right parameters", async function () {
+				const { marketplace, withdrawalPeriod } = await loadFixture(deployMarketplaceFixture);
+
+				const promise = marketplace.setWithdrawalPeriod(withdrawalPeriod + 1);
+				await expect(promise).not.be.reverted;
+			});
+		});
+
+		describe("Events", function () {
+			it("Should emit an event when setting a new withdrawal period", async function () {
+				const { marketplace, withdrawalPeriod } = await loadFixture(deployMarketplaceFixture);
+
+				const newWithdrawalPeriod = withdrawalPeriod + 1;
+				const promise = marketplace.setWithdrawalPeriod(newWithdrawalPeriod);
+				await expect(promise).to.emit(marketplace, "WithdrawalPeriodSet").withArgs(newWithdrawalPeriod);
+			});
+		});
+
+		describe("Post actions", function () {
+			it("Should return the right withdrawal period after setting a new withdrawal period", async function () {
+				const { marketplace, withdrawalPeriod } = await loadFixture(deployMarketplaceFixture);
+
+				const newWithdrawalPeriod = withdrawalPeriod + 1;
+				await marketplace.setWithdrawalPeriod(newWithdrawalPeriod);
+
+				const actual = await marketplace.withdrawalPeriod();
+				expect(actual).to.equal(newWithdrawalPeriod);
+			});
+		});
+	});
+
 	describe("Transfer the contract's ownership", function () {
 		describe("Validations", function () {
 			it("Should revert with the right reason if called from an non-owner account", async function () {
