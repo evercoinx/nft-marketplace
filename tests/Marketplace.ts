@@ -222,6 +222,18 @@ describe("Markeplace", function () {
 				expect(actual.seller).to.be.equal(user.address);
 			});
 
+			it("Should return the right listing count after listing a token", async function () {
+				const { marketplace, dummyNft, user, listingFee, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice, { value: listingFee });
+
+				const actual = await marketplace.listingCount();
+				expect(actual).to.be.equal(1);
+			});
+
 			it("Should change the buyer's balance after listing a token", async function () {
 				const { marketplace, dummyNft, user, listingFee, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
@@ -323,6 +335,20 @@ describe("Markeplace", function () {
 				expect(actual.price).to.be.equal(0);
 				expect(actual.seller).to.be.equal(ethers.constants.AddressZero);
 			});
+
+			it("Should return the right listing count after delisting a token", async function () {
+				const { marketplace, dummyNft, user, listingFee, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice, { value: listingFee });
+
+				await marketplace.connect(user).delistToken(dummyNft.address, tokenId);
+
+				const actual = await marketplace.listingCount();
+				expect(actual).to.be.equal(0);
+			});
 		});
 	});
 
@@ -341,14 +367,28 @@ describe("Markeplace", function () {
 					.withArgs(dummyNft.address, tokenId);
 			});
 
-			it("Should revert with the right error if the marketplace is not an approved operator", async function () {
+			it("Should revert with the right error if an account removed its approval from the marketplace", async function () {
 				const { marketplace, dummyNft, user, user2, listingFee, tokenId, tokenPrice } = await loadFixture(
 					deployMarketplaceFixture,
 				);
 
 				await dummyNft.connect(user).approve(marketplace.address, tokenId);
 				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice, { value: listingFee });
+
 				await dummyNft.connect(user).approve(ethers.constants.AddressZero, tokenId);
+
+				const promise = marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+				await expect(promise).to.be.revertedWithCustomError(marketplace, "OperatorNotApproved").withArgs();
+			});
+
+			it("Should revert with the right error if an account transferred its token to another account", async function () {
+				const { marketplace, dummyNft, deployer, user, user2, listingFee, tokenId, tokenPrice } =
+					await loadFixture(deployMarketplaceFixture);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice, { value: listingFee });
+
+				await dummyNft.connect(user).transferFrom(user.address, deployer.address, tokenId);
 
 				const promise = marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
 				await expect(promise).to.be.revertedWithCustomError(marketplace, "OperatorNotApproved").withArgs();
@@ -474,6 +514,20 @@ describe("Markeplace", function () {
 
 				const actual = await marketplace.paymentDates(user.address);
 				expect(actual).to.be.equal(paymentDate);
+			});
+
+			it("Should return the right listing count after delisting a token", async function () {
+				const { marketplace, dummyNft, user, user2, listingFee, tokenId, tokenPrice } = await loadFixture(
+					deployMarketplaceFixture,
+				);
+
+				await dummyNft.connect(user).approve(marketplace.address, tokenId);
+				await marketplace.connect(user).listToken(dummyNft.address, tokenId, tokenPrice, { value: listingFee });
+
+				await marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
+
+				const actual = await marketplace.listingCount();
+				expect(actual).to.be.equal(0);
 			});
 
 			it("Should change the token's owner after buying a token", async function () {

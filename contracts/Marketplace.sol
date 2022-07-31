@@ -7,6 +7,7 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { PullPaymentUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PullPaymentUpgradeable.sol";
+import { CountersUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
 error OperatorNotApproved();
 error InvalidNFTOwner(address spender);
@@ -26,6 +27,8 @@ contract Marketplace is
 	ReentrancyGuardUpgradeable,
 	PullPaymentUpgradeable
 {
+	using CountersUpgradeable for CountersUpgradeable.Counter;
+
 	struct Listing {
 		address seller;
 		uint256 price;
@@ -40,8 +43,10 @@ contract Marketplace is
 
 	uint256 public listingFee;
 	uint256 public withdrawalPeriod;
+	CountersUpgradeable.Counter public listingCount;
 	mapping(address => uint256) public paymentDates;
-	mapping(IERC721 => mapping(uint256 => Listing)) private _listings;
+
+	mapping(IERC721 => mapping(uint256 => Listing)) private _tokenToListing;
 
 	modifier isNFTOwner(
 		IERC721 tokenContract,
@@ -55,8 +60,8 @@ contract Marketplace is
 	}
 
 	modifier isListed(IERC721 tokenContract, uint256 tokenId) {
-		Listing memory listing = _listings[tokenContract][tokenId];
-		if (listing.price <= 0) {
+		Listing memory listing = _tokenToListing[tokenContract][tokenId];
+		if (listing.price == 0) {
 			revert TokenNotListed(tokenContract, tokenId);
 		}
 		_;
@@ -92,21 +97,23 @@ contract Marketplace is
 		if (price == 0) {
 			revert ZeroPrice();
 		}
+
 		if (msg.value != listingFee) {
 			revert InvalidListingFee(tokenContract, tokenId, msg.value);
 		}
 
-		Listing memory listing = _listings[tokenContract][tokenId];
-		if (listing.price > 0) {
+		if (_tokenToListing[tokenContract][tokenId].price > 0) {
 			revert TokenAlreadyListed(tokenContract, tokenId);
 		}
 
-		_listings[tokenContract][tokenId] = Listing({ seller: msg.sender, price: price });
+		_tokenToListing[tokenContract][tokenId] = Listing({ seller: msg.sender, price: price });
+		listingCount.increment();
 
 		address owner = super.owner();
 		paymentDates[owner] = block.timestamp;
 
 		super._asyncTransfer(owner, msg.value);
+
 		emit TokenListed(msg.sender, tokenContract, tokenId, price);
 	}
 
@@ -116,7 +123,9 @@ contract Marketplace is
 		nonReentrant
 		isNFTOwner(tokenContract, tokenId, msg.sender)
 	{
-		delete _listings[tokenContract][tokenId];
+		delete _tokenToListing[tokenContract][tokenId];
+		listingCount.decrement();
+
 		emit TokenDelisted(msg.sender, tokenContract, tokenId);
 	}
 
@@ -128,7 +137,7 @@ contract Marketplace is
 		nonReentrant
 		isApproved(tokenContract, tokenId)
 	{
-		Listing memory listing = _listings[tokenContract][tokenId];
+		Listing memory listing = _tokenToListing[tokenContract][tokenId];
 		if (listing.price != msg.value) {
 			revert InvalidListingPrice(tokenContract, tokenId, msg.value);
 		}
@@ -137,12 +146,14 @@ contract Marketplace is
 			revert PurchaseForbidden(msg.sender);
 		}
 
+		delete _tokenToListing[tokenContract][tokenId];
+		listingCount.decrement();
 		paymentDates[listing.seller] = block.timestamp + withdrawalPeriod;
-		delete _listings[tokenContract][tokenId];
 
 		super._asyncTransfer(listing.seller, msg.value);
 
 		tokenContract.safeTransferFrom(listing.seller, msg.sender, tokenId);
+
 		emit TokenBought(msg.sender, tokenContract, tokenId, listing.price);
 	}
 
@@ -156,9 +167,10 @@ contract Marketplace is
 		}
 
 		delete paymentDates[payee];
-
 		uint256 amount = super.payments(payee);
+
 		super.withdrawPayments(payee);
+
 		emit PaymentsWithdrawn(payee, amount);
 	}
 
@@ -171,7 +183,7 @@ contract Marketplace is
 			revert ZeroPrice();
 		}
 
-		_listings[tokenContract][tokenId].price = newPrice;
+		_tokenToListing[tokenContract][tokenId].price = newPrice;
 		emit TokenListed(msg.sender, tokenContract, tokenId, newPrice);
 	}
 
@@ -194,6 +206,6 @@ contract Marketplace is
 	}
 
 	function getListing(IERC721 tokenContract, uint256 tokenId) external view returns (Listing memory) {
-		return _listings[tokenContract][tokenId];
+		return _tokenToListing[tokenContract][tokenId];
 	}
 }
