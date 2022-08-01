@@ -9,7 +9,7 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/
 import { PullPaymentUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PullPaymentUpgradeable.sol";
 import { CountersUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
-error OperatorNotApproved();
+error NFTNotApproved(IERC721 tokenContract, uint256 tokenId);
 error InvalidNFTOwner(address spender);
 error PurchaseForbidden(address buyer);
 error WithdrawalForbidden(address payee);
@@ -20,6 +20,41 @@ error InvalidListingFee(IERC721 tokenContract, uint256 tokenId, uint256 fee);
 error InvalidListingPrice(IERC721 tokenContract, uint256 tokenId, uint256 price);
 error ZeroPrice();
 
+/**
+ * @dev The contract implements an marketplace that allows users to sell and buy non-fungible tokens (NFTs) which
+ * compliant with the ERC-721 standard. In particular the marketplace exposes the following functionality to its users:
+ * - List an NFT.
+ * - Delist an NFT.
+ * - Buy an NFT with transferring ownership.
+ * - Update listing data.
+ * - Get listing data.
+ *
+ * All the opertions above identify an NFT by the address of its NTF contract and the identifier assigned within this NTF
+ * contract. Note the marketplace doesn't assume NFT's ownership when the NFT is listed there. So it's a responsibility
+ * of the NFT owner to guarantee that the marketplace is approved to manage the NFT in advance. The approval is achieved
+ * by calling the approve method on the NFT contract with the marketplace's address and the given NFT.
+ *
+ * From the administrative perspective the contract is controlled by the single owner account. The owner is capable of
+ * executing the following functionality:
+ * - Pause/unpause invocation of certain methods on the contract in case of emergency.
+ * - Transfer/Renounce the contract's ownership.
+ * - Set the listing fee and the withdrawal period.
+ *
+ * The contract is upgradeable by sticking to the proxy upgrade pattern based on the unstructured storage and
+ * transparent proxies approach. For more information about all these concepts, see
+ * https://docs.openzeppelin.com/upgrades-plugins/1.x/proxies.
+ *
+ * The marketplace implements a pull payment strategy, where the NFT seller account doesn't receive its owed payments
+ * directly from the marketplace, but has to withdraw them on its own instead. For more detail on this strategy, see
+ * https://consensys.github.io/smart-contract-best-practices/development-recommendations/general/external-calls/#favor-pull-over-push-for-external-calls
+ *
+ * Note that payments cannot be withdrawn immediately. The seller have to wait for a certain withdrawal period starting
+ * from the moment they carried out their last trade.
+ *
+ * Some methods are made reentrancy resistant due to the fact that their implementation is unable to be fully compliant
+ * with the checks-effects-interractions pattern due to forced external calls in modifiers. For more detail on
+ * reentrancy attacks, see https://consensys.github.io/smart-contract-best-practices/attacks/reentrancy/.
+ */
 contract Marketplace is
 	Initializable,
 	OwnableUpgradeable,
@@ -29,25 +64,69 @@ contract Marketplace is
 {
 	using CountersUpgradeable for CountersUpgradeable.Counter;
 
+	/**
+	 * @dev Emitted when the `seller` account lists the NFT at the marketplace.
+	 */
+	event TokenListed(address indexed seller, IERC721 indexed tokenContract, uint256 indexed tokenId, uint256 price);
+
+	/**
+	 * @dev Emitted when the `seller` account delists the NFT from the marketplace.
+	 */
+	event TokenDelisted(address indexed seller, IERC721 indexed tokenContract, uint256 indexed tokenId);
+
+	/**
+	 * @dev Emitted when the `buyer` account purchases the NFT listed at the marketplace.
+	 */
+	event TokenBought(address indexed buyer, IERC721 indexed tokenContract, uint256 indexed tokenId, uint256 price);
+
+	/**
+	 * @dev Emitted when the `payee` account withdraws accumulated payments.
+	 */
+	event PaymentsWithdrawn(address indexed payee, uint256 amount);
+
+	/**
+	 * @dev Emitted when the owner sets the given listing fee.
+	 */
+	event ListingFeeSet(uint256 listingFee);
+
+	/**
+	 * @dev Emitted when the owner sets the given withdrawal period.
+	 */
+	event WithdrawalPeriodSet(uint256 withdrawalPeriod);
+
 	struct Listing {
 		address seller;
 		uint256 price;
 	}
 
-	event TokenListed(address indexed seller, IERC721 indexed tokenContract, uint256 indexed tokenId, uint256 price);
-	event TokenDelisted(address indexed seller, IERC721 indexed tokenContract, uint256 indexed tokenId);
-	event TokenBought(address indexed buyer, IERC721 indexed tokenContract, uint256 indexed tokenId, uint256 price);
-	event PaymentsWithdrawn(address indexed payee, uint256 amount);
-	event ListingFeeSet(uint256 listingFee);
-	event WithdrawalPeriodSet(uint256 withdrawalPeriod);
-
+	/**
+	 * @dev The current listing fee. It can be changed through the `setListingFee` method.
+	 */
 	uint256 public listingFee;
+
+	/**
+	 * @dev The current withdrawal period. It can be changed through the `setWithdrawalPeriod` method.
+	 */
 	uint256 public withdrawalPeriod;
+
+	/**
+	 * @dev The total listing count at the marketplace.
+	 */
 	CountersUpgradeable.Counter public listingCount;
+
+	/**
+	 * @dev The mapping between accounts who sold an NFT and release dates of locked payments.
+	 */
 	mapping(address => uint256) public paymentDates;
 
+	/**
+	 * @dev The mapping between an NFT (identitifed as the NFT address + NFT id) and a listing at the marketplace.
+	 */
 	mapping(IERC721 => mapping(uint256 => Listing)) private _tokenToListing;
 
+	/**
+	 * @dev Throws if called by any account other than the NFT owner.
+	 */
 	modifier isNFTOwner(
 		IERC721 tokenContract,
 		uint256 tokenId,
@@ -59,6 +138,9 @@ contract Marketplace is
 		_;
 	}
 
+	/**
+	 * @dev Throws if the NFT is not listed at the marketplace.
+	 */
 	modifier isListed(IERC721 tokenContract, uint256 tokenId) {
 		Listing memory listing = _tokenToListing[tokenContract][tokenId];
 		if (listing.price == 0) {
@@ -67,18 +149,28 @@ contract Marketplace is
 		_;
 	}
 
+	/**
+	 * @dev Throws if the NFT is not approved by the owner account.
+	 */
 	modifier isApproved(IERC721 tokenContract, uint256 tokenId) {
 		if (tokenContract.getApproved(tokenId) != address(this)) {
-			revert OperatorNotApproved();
+			revert NFTNotApproved(tokenContract, tokenId);
 		}
 		_;
 	}
 
-	/// @custom:oz-upgrades-unsafe-allow constructor
+	/**
+	 * See https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable#initializing_the_implementation_contract
+	 *
+	 * @custom:oz-upgrades-unsafe-allow constructor
+	 */
 	constructor() {
 		_disableInitializers();
 	}
 
+	/**
+	 * @dev Initializes the contract setting the `listingFee` fee and the `withdrawalPeriod` period.
+	 */
 	function initialize(uint256 listingFee_, uint256 withdrawalPeriod_) public initializer {
 		OwnableUpgradeable.__Ownable_init();
 		PausableUpgradeable.__Pausable_init();
@@ -89,6 +181,27 @@ contract Marketplace is
 		withdrawalPeriod = withdrawalPeriod_;
 	}
 
+	/**
+	 * @dev Lists the NFT at the marketplace with the given `price`.
+	 *
+	 * Requirements:
+	 *
+	 * - The caller must be the owner of the NFT.
+	 *
+	 * - Before calling this method, the caller must approve thie contract to manage the NFT by calling the `approve`
+	 *   method on the corresponding NFT contract.
+	 *
+	 * - While calling this method, the caller must specify the value equal to the marketplace's listing fee, which can
+	 *   be retieved with the `listingFee` getter.
+	 *
+	 * - The listing `price` can be anything starting from 1 Wei.
+	 *
+	 * @param tokenContract The address of the NFT contract.
+	 * @param tokenId The id of the NFT in the `tokenContract` contract.
+	 * @param price The desired price to sell the NFT at the marketplace.
+	 *
+	 * Emits a {TokenListed} event.
+	 */
 	function listToken(
 		IERC721 tokenContract,
 		uint256 tokenId,
@@ -117,6 +230,25 @@ contract Marketplace is
 		emit TokenListed(msg.sender, tokenContract, tokenId, price);
 	}
 
+	/**
+	 * @dev Delists the NFT from the marketplace.
+	 *
+	 * Note that the information about the delisted NFT is wiped out completely from the marketplace contract.
+	 *
+	 * Requirements:
+	 *
+	 * - The NFT must be listed at the marketplace.
+	 *
+	 * - The caller must approve this contract to operate the NFT by calling the `approve` method on the corresponding
+	 *   NFT contract.
+	 *
+	 * - The caller must be the owner of the NFT.
+	 *
+	 * @param tokenContract The address of the NFT contract.
+	 * @param tokenId The id of the NFT in the `tokenContract` contract.
+	 *
+	 * Emits a {TokenDelisted} event.
+	 */
 	function delistToken(IERC721 tokenContract, uint256 tokenId)
 		external
 		isListed(tokenContract, tokenId)
@@ -129,6 +261,28 @@ contract Marketplace is
 		emit TokenDelisted(msg.sender, tokenContract, tokenId);
 	}
 
+	/**
+	 * @dev Buys the NFT through the marketplace. The seller receives a payment from the buyer accumulated at the escrow
+	 * and locked for the contract's withdrawal period.
+	 *
+	 * Note that the information about the bought NFT is wiped out completely from the marketplace contract.
+	 *
+	 * Requirements:
+	 *
+	 * - The NFT must be listed at the marketplace.
+	 *
+	 * - The caller must approve this contract to operate the NFT by calling the `approve` method on the corresponding
+	 *   NFT contract.
+	 *
+	 * - The caller must be the owner of the NFT.
+	 *
+	 * - The caller must transfer the value matching the NTF listed price.
+	 *
+	 * @param tokenContract The address of the NFT contract.
+	 * @param tokenId The id of the NFT in the `tokenContract` contract.
+	 *
+	 * Emits a {TokenBought} event.
+	 */
 	function buyToken(IERC721 tokenContract, uint256 tokenId)
 		external
 		payable
@@ -157,6 +311,50 @@ contract Marketplace is
 		emit TokenBought(msg.sender, tokenContract, tokenId, listing.price);
 	}
 
+	/**
+	 * @dev Updates the price of the listed NFT.
+	 *
+	 * Note the the caller is not prevented from setting the same price again.
+	 *
+	 * Requirements:
+	 *
+	 * - The NFT must be listed at the marketplace.
+	 *
+	 * - The caller must be the owner of the NFT.
+	 *
+	 * - The listing `newPrice` price can be anything starting from 1 Wei.
+	 *
+	 * @param tokenContract The address of the NFT contract.
+	 * @param tokenId The id of the NFT in the `tokenContract` contract.
+	 *
+	 * Emits a {TokenListed} event.
+	 */
+	function updateListing(
+		IERC721 tokenContract,
+		uint256 tokenId,
+		uint256 newPrice
+	) external isListed(tokenContract, tokenId) nonReentrant isNFTOwner(tokenContract, tokenId, msg.sender) {
+		if (newPrice == 0) {
+			revert ZeroPrice();
+		}
+
+		_tokenToListing[tokenContract][tokenId].price = newPrice;
+		emit TokenListed(msg.sender, tokenContract, tokenId, newPrice);
+	}
+
+	/**
+	 * @dev Withdraws accumulated payments for the payee account.
+	 *
+	 * Requirements:
+	 *
+	 * - The caller must be either the `payee` or the owner account.
+	 *
+	 * - The withdrawal period must end up.
+	 *
+	 * @param payee The address of the `payee` account.
+	 *
+	 * Emits a {PaymentsWithdrawn} event.
+	 */
 	function withdrawPayments(address payable payee) public override whenNotPaused {
 		if (msg.sender != payee && msg.sender != super.owner()) {
 			revert WithdrawalForbidden(payee);
@@ -174,37 +372,60 @@ contract Marketplace is
 		emit PaymentsWithdrawn(payee, amount);
 	}
 
-	function updateListing(
-		IERC721 tokenContract,
-		uint256 tokenId,
-		uint256 newPrice
-	) external isListed(tokenContract, tokenId) nonReentrant isNFTOwner(tokenContract, tokenId, msg.sender) {
-		if (newPrice == 0) {
-			revert ZeroPrice();
-		}
-
-		_tokenToListing[tokenContract][tokenId].price = newPrice;
-		emit TokenListed(msg.sender, tokenContract, tokenId, newPrice);
-	}
-
+	/**
+	 * @dev Sets the listing fee of the marketplace. The fee is expressed in Wei and can be anything starting from zero.
+	 *
+	 * It is an adminstrative method that can be called by the owner only.
+	 *
+	 * Note the caller is not prevented from setting the same listing fee again.
+	 *
+	 * @param listingFee_ The listing fee of the marketplace.
+	 *
+	 * Emits a {ListingFeeSet} event.
+	 */
 	function setListingFee(uint256 listingFee_) external onlyOwner {
 		listingFee = listingFee_;
 		emit ListingFeeSet(listingFee_);
 	}
 
+	/**
+	 * @dev Sets the withdrawal period for pending payments. The period is expressed in seconds and can be anything
+	 * starting from zero.
+	 *
+	 * It is an adminstrative method that can be called by the owner only.
+	 *
+	 * Note the caller is not prevented from setting the same withdrawal period again.
+	 *
+	 * @param withdrawalPeriod_ The withdrawal period for pending payments (in seconds).
+	 *
+	 * Emits a {WithdrawalPeriodSet} event.
+	 */
 	function setWithdrawalPeriod(uint256 withdrawalPeriod_) external onlyOwner {
 		withdrawalPeriod = withdrawalPeriod_;
 		emit WithdrawalPeriodSet(withdrawalPeriod_);
 	}
 
+	/**
+	 * @dev Performs an emergency stop on the contract for the `buyToken` and `withdrawPayments` methods.
+	 *
+	 * It is an adminstrative method that can be called by the owner only.
+	 */
 	function pause() external onlyOwner {
 		super._pause();
 	}
 
+	/**
+	 * @dev Releases an emergency stop on the contract for the `buyToken` and `withdrawPayments` methods.
+	 *
+	 * It is an adminstrative method that can be called by the owner only.
+	 */
 	function unpause() external onlyOwner {
 		super._unpause();
 	}
 
+	/**
+	 * @dev Returns the information about the listed NFT, if any.
+	 */
 	function getListing(IERC721 tokenContract, uint256 tokenId) external view returns (Listing memory) {
 		return _tokenToListing[tokenContract][tokenId];
 	}

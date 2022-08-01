@@ -105,7 +105,9 @@ describe("Markeplace", function () {
 				const promise = marketplace
 					.connect(user)
 					.listToken(dummyNft.address, tokenId, tokenPrice, { value: listingFee });
-				await expect(promise).to.be.revertedWithCustomError(marketplace, "OperatorNotApproved").withArgs();
+				await expect(promise)
+					.to.be.revertedWithCustomError(marketplace, "NFTNotApproved")
+					.withArgs(dummyNft.address, tokenId);
 			});
 
 			it("Should revert with the right error if a token has been already listed", async function () {
@@ -378,7 +380,9 @@ describe("Markeplace", function () {
 				await dummyNft.connect(user).approve(ethers.constants.AddressZero, tokenId);
 
 				const promise = marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
-				await expect(promise).to.be.revertedWithCustomError(marketplace, "OperatorNotApproved").withArgs();
+				await expect(promise)
+					.to.be.revertedWithCustomError(marketplace, "NFTNotApproved")
+					.withArgs(dummyNft.address, tokenId);
 			});
 
 			it("Should revert with the right error if an account transferred its token to another account", async function () {
@@ -391,7 +395,9 @@ describe("Markeplace", function () {
 				await dummyNft.connect(user).transferFrom(user.address, deployer.address, tokenId);
 
 				const promise = marketplace.connect(user2).buyToken(dummyNft.address, tokenId, { value: tokenPrice });
-				await expect(promise).to.be.revertedWithCustomError(marketplace, "OperatorNotApproved").withArgs();
+				await expect(promise)
+					.to.be.revertedWithCustomError(marketplace, "NFTNotApproved")
+					.withArgs(dummyNft.address, tokenId);
 			});
 
 			it("Should revert with the right error if called with a price lower than expected", async function () {
