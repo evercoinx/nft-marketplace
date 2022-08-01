@@ -1,18 +1,18 @@
 {
-	"name": "marketplace",
+	"name": "nft-marketplace",
 	"version": "1.0.0",
 	"description": "NFT Marketplace",
 	"scripts": {
 		"prepare": "husky install",
-		"ts:format": "prettier --write \"scripts/**/*.ts\" \"tests/**/*.ts\"",
-		"ts:lint": "eslint --fix \"{scripts,tests}/**/*.ts\"",
+		"format": "prettier --write \"scripts/**/*.ts\" \"tests/**/*.ts\"",
+		"lint": "eslint --fix \"{scripts,tests}/**/*.ts\"",
 		"compile": "hardhat compile",
 		"test": "hardhat test",
 		"coverage": "hardhat coverage"
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/evercoinx/marketplace.git"
+		"url": "git+https://github.com/evercoinx/nft-marketplace.git"
 	},
 	"keywords": [
 		"nft",
