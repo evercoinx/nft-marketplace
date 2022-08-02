@@ -1,10 +1,10 @@
 import { ethers, upgrades } from "hardhat";
+import env from "../env";
 
 async function main() {
-	const listingFee = ethers.utils.parseEther("0.001");
-	const withdrawalPeriod = 3 * 24 * 60 * 60; // 3 days
+	const listingFee = ethers.utils.parseEther(env.marketplace.listingFee.toString());
 	const Marketplace = await ethers.getContractFactory("Marketplace");
-	const marketplace = await upgrades.deployProxy(Marketplace, [listingFee, withdrawalPeriod]);
+	const marketplace = await upgrades.deployProxy(Marketplace, [listingFee, env.marketplace.withdrawalPeriod]);
 
 	await marketplace.deployed();
 	console.log(`Marketplace is deployed to ${marketplace.address}`);

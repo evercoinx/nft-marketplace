@@ -1,9 +1,7 @@
-import * as dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
-
-dotenv.config();
+import env from "./env";
 
 const config: HardhatUserConfig = {
 	defaultNetwork: "hardhat",
@@ -14,6 +12,10 @@ const config: HardhatUserConfig = {
 		localhost: {
 			url: "http://127.0.0.1:8545",
 			chainId: 1337,
+		},
+		goerli: {
+			url: `https://eth-goerli.alchemyapi.io/v2/${env.alchemy.apiKey}`,
+			accounts: [env.goerli.privateKey],
 		},
 	},
 	solidity: {
