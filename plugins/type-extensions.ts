@@ -4,6 +4,7 @@ export interface EnvVars {
 	marketplace: {
 		listingFee: number;
 		withdrawalPeriod: number;
+		address?: string;
 	};
 }
 

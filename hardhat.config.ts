@@ -1,7 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
-import "./plugins/env-vars";
+import "./plugins/configurator";
 
 const config: HardhatUserConfig = {
 	defaultNetwork: "hardhat",
@@ -13,6 +13,7 @@ const config: HardhatUserConfig = {
 			url: "http://127.0.0.1:8545",
 			chainId: 1337,
 		},
+		// goerli, mainnet, etherscan are defined in the configurator plugin
 	},
 	solidity: {
 		version: "0.8.9",
