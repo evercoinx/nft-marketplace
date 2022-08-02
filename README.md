@@ -1,7 +1,7 @@
 ## Description
 
-The contract implements an marketplace that allows users to sell and buy non-fungible tokens (NFTs) which
-compliant with the ERC-721 standard. The marketplace exposes the following functionality to its users:
+The contract implements an marketplace that allows users to sell and buy non-fungible tokens (NFTs) which are compliant
+with the ERC-721 standard. The marketplace exposes the following functionality to its users:
 
 -   List an NFT.
 -   Delist an NFT.
@@ -12,8 +12,11 @@ compliant with the ERC-721 standard. The marketplace exposes the following funct
 ## Installation
 
 ```bash
-# install app dependencies
+# install application dependencies
 $ npm install
+
+# create .env file with the default configuration
+$ cp -vi .env.example .env
 ```
 
 ## Format & Lint
@@ -41,4 +44,15 @@ $ npm run coverage
 ```bash
 # compile contracts
 $ npm run compile
+```
+
+## Deploy
+
+```bash
+# deploy contracts to the hardhat network
+$ npm run deploy:hardhat
+
+# deploy contracts to the local network
+$ npm run node
+$ npm run deploy:localhost
 ```

@@ -8,7 +8,10 @@
 		"lint": "eslint --fix \"{scripts,tests}/**/*.ts\"",
 		"compile": "hardhat compile",
 		"test": "hardhat test",
-		"coverage": "hardhat coverage"
+		"coverage": "hardhat coverage",
+		"node": "hardhat node",
+		"deploy:hardhat": "hardhat run --network hardhat scripts/deploy-marketplace.ts",
+		"deploy:localhost": "hardhat run --network localhost scripts/deploy-marketplace.ts"
 	},
 	"repository": {
 		"type": "git",
