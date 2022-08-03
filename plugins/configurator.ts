@@ -19,13 +19,13 @@ const schema = Joi.object()
 			.description("Marketplace withdrawal wait period (in seconds)"),
 		MARKETPLACE_ADDRESS: Joi.string()
 			.optional()
+			.length(42)
 			.allow("")
-			.length(40)
-			.hex()
+			.alphanum()
 			.description("Marketplace contract address"),
 		ALCHEMY_API_KEY: Joi.string().required().length(32).alphanum().description("Alchemy API key"),
 		ETHERSCAN_API_KEY: Joi.string().required().length(34).alphanum().description("Etherscan API Key"),
-		GOERLI_PRIVATE_KEY: Joi.string().required().length(64).hex().description("Private key for Goerli network"),
+		GOERLI_PRIVATE_KEY: Joi.string().required().length(66).alphanum().description("Private key for Goerli network"),
 	})
 	.unknown();
 

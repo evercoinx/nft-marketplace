@@ -1,15 +1,13 @@
-import { envVars, ethers, run } from "hardhat";
+import { envVars, run } from "hardhat";
 
 async function main() {
 	if (!envVars.marketplace.address) {
-		throw new Error("Marketplace address is not specified; aborted");
+		throw new Error("Marketplace address is not specified");
 	}
-
-	const listingFee = ethers.utils.parseEther(envVars.marketplace.listingFee.toString());
 
 	await run("verify:verify", {
 		address: envVars.marketplace.address,
-		constructorArguments: [listingFee, envVars.marketplace.withdrawalPeriod],
+		constructorArguments: [],
 	});
 	console.log(`Marketplace is verified at ${envVars.marketplace.address}`);
 }

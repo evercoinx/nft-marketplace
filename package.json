@@ -11,10 +11,11 @@
 		"test": "hardhat test",
 		"coverage": "hardhat coverage",
 		"node": "hardhat node",
+		"console": "hardhat console",
 		"deploy:hardhat": "hardhat run --network hardhat scripts/deploy-marketplace.ts",
 		"deploy:localhost": "hardhat run --network localhost scripts/deploy-marketplace.ts",
 		"deploy:goerli": "hardhat run --network goerli scripts/deploy-marketplace.ts",
-		"verify:goerli": "hardhat run scripts/verify-marketplace.ts"
+		"verify:goerli": "hardhat run --network goerli scripts/verify-marketplace.ts"
 	},
 	"repository": {
 		"type": "git",
