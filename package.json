@@ -4,9 +4,10 @@
 	"description": "NFT Marketplace",
 	"scripts": {
 		"prepare": "husky install",
-		"format": "prettier --write \"scripts/**/*.ts\" \"test/**/*.ts\"",
-		"lint": "eslint --fix \"{scripts,test}/**/*.ts\"",
+		"format": "prettier --write \"plugins/**/*.ts\" \"scripts/**/*.ts\" \"test/**/*.ts\"",
+		"lint": "eslint --fix \"{plugins,scripts,test}/**/*.ts\"",
 		"compile": "hardhat compile",
+		"clean": "hardhat clean",
 		"test": "hardhat test",
 		"coverage": "hardhat coverage",
 		"node": "hardhat node",

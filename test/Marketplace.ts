@@ -29,7 +29,7 @@ describe("Markeplace", function () {
 			user2,
 			listingFee,
 			withdrawalPeriod,
-			tokenId: events[0].args.tokenId,
+			tokenId: events[0]?.args.tokenId,
 			tokenPrice: ethers.utils.parseEther("0.1"),
 		};
 	}
@@ -77,6 +77,79 @@ describe("Markeplace", function () {
 
 			const actual = await marketplace.paymentDates(user.address);
 			expect(actual).to.be.equal(0);
+		});
+	});
+
+	describe("Upgrade the contract", function () {
+		it("Shouldn't rejected after upgrading to a new version", async function () {
+			const { marketplace } = await loadFixture(deployMarketplaceFixture);
+
+			const MarketplaceUpgraded = await ethers.getContractFactory("MarketplaceUpgraded");
+
+			const promise = upgrades.upgradeProxy(marketplace.address, MarketplaceUpgraded);
+			await expect(promise).not.to.be.rejected;
+		});
+
+		it("Should return the same proxy address after upgrading to a new version", async function () {
+			const { marketplace } = await loadFixture(deployMarketplaceFixture);
+
+			const MarketplaceUpgraded = await ethers.getContractFactory("MarketplaceUpgraded");
+
+			const marketplaceUpgraded = await upgrades.upgradeProxy(marketplace.address, MarketplaceUpgraded);
+			expect(marketplaceUpgraded.address).to.be.equal(marketplace.address);
+		});
+
+		it("Should return the right new property after upgrading to a new version", async function () {
+			const { marketplace } = await loadFixture(deployMarketplaceFixture);
+
+			const MarketplaceUpgraded = await ethers.getContractFactory("MarketplaceUpgraded");
+			const marketplaceUpgraded = await upgrades.upgradeProxy(marketplace.address, MarketplaceUpgraded);
+
+			const newProperty = 1;
+			await marketplaceUpgraded.setNewProperty(newProperty);
+
+			const actual = await marketplaceUpgraded.newProperty();
+			expect(actual).to.be.equal(newProperty);
+		});
+
+		it("Should return the right listing fee after upgrading to a new version", async function () {
+			const { marketplace, listingFee } = await loadFixture(deployMarketplaceFixture);
+
+			const MarketplaceUpgraded = await ethers.getContractFactory("MarketplaceUpgraded");
+			const marketplaceUpgraded = await upgrades.upgradeProxy(marketplace.address, MarketplaceUpgraded);
+
+			const actual = await marketplaceUpgraded.listingFee();
+			expect(actual).to.be.equal(listingFee);
+		});
+
+		it("Should return the right withdrawal period after upgrading to a new version", async function () {
+			const { marketplace, withdrawalPeriod } = await loadFixture(deployMarketplaceFixture);
+
+			const MarketplaceUpgraded = await ethers.getContractFactory("MarketplaceUpgraded");
+			const marketplaceUpgraded = await upgrades.upgradeProxy(marketplace.address, MarketplaceUpgraded);
+
+			const actual = await marketplaceUpgraded.withdrawalPeriod();
+			expect(actual).to.be.equal(withdrawalPeriod);
+		});
+
+		it("Should return the right owner after upgrading to a new version", async function () {
+			const { marketplace, deployer } = await loadFixture(deployMarketplaceFixture);
+
+			const MarketplaceUpgraded = await ethers.getContractFactory("MarketplaceUpgraded");
+			const marketplaceUpgraded = await upgrades.upgradeProxy(marketplace.address, MarketplaceUpgraded);
+
+			const actual = await marketplaceUpgraded.owner();
+			expect(actual).to.be.equal(deployer.address);
+		});
+
+		it("Should return the right pausable state after upgrading to a new version", async function () {
+			const { marketplace } = await loadFixture(deployMarketplaceFixture);
+
+			const MarketplaceUpgraded = await ethers.getContractFactory("MarketplaceUpgraded");
+			const marketplaceUpgraded = await upgrades.upgradeProxy(marketplace.address, MarketplaceUpgraded);
+
+			const actual = await marketplaceUpgraded.paused();
+			expect(actual).to.be.false;
 		});
 	});
 

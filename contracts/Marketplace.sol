@@ -21,7 +21,7 @@ error InvalidListingPrice(IERC721 tokenContract, uint256 tokenId, uint256 price)
 error ZeroPrice();
 
 /**
- * @dev The contract implements an marketplace that allows users to sell and buy non-fungible tokens (NFTs) which are
+ * @dev This contract implements a marketplace that allows users to sell and buy non-fungible tokens (NFTs) which are
  * compliant with the ERC-721 standard. In particular the marketplace exposes the following functionality to its users:
  * - List an NFT.
  * - Delist an NFT.

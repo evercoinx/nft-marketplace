@@ -3,6 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 import "./plugins/configurator";
 
+// Dynamic configuration should be defined in the configurator plugin.
 const config: HardhatUserConfig = {
 	defaultNetwork: "hardhat",
 	networks: {
@@ -13,7 +14,6 @@ const config: HardhatUserConfig = {
 			url: "http://127.0.0.1:8545",
 			chainId: 1337,
 		},
-		// goerli, mainnet, etherscan are defined in the configurator plugin
 	},
 	solidity: {
 		version: "0.8.9",

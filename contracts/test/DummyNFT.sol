@@ -5,6 +5,10 @@ import { ERC721, ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/e
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
 
+/**
+ * @dev This contract is used to test interaction between any non-fungible token and relevant methods implemented on the
+ * Marketplace contract.
+ */
 contract DummyNFT is ERC721URIStorage, Ownable {
 	using Counters for Counters.Counter;
 	Counters.Counter private _tokenIds;
