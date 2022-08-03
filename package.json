@@ -10,6 +10,8 @@
 		"clean": "hardhat clean",
 		"test": "hardhat test",
 		"coverage": "hardhat coverage",
+		"preanalyze": "docker pull mythril/myth",
+		"analyze": "docker run --rm -v $INIT_CWD:/tmp mythril/myth analyze /tmp/contracts/Marketplace.sol --solc-json /tmp/solc.json",
 		"node": "hardhat node",
 		"console": "hardhat console",
 		"deploy:hardhat": "hardhat run --network hardhat scripts/deploy-marketplace.ts",
@@ -25,7 +27,7 @@
 		"nft",
 		"marketplace"
 	],
-	"author": "Serge Grigorenko <xyz@evercloud.io>",
+	"author": "Serge Grigorenko <serge.grigorenko@gmail.com>",
 	"license": "UNLICENSED",
 	"bugs": {
 		"url": "https://github.com/evercoinx/marketplace/issues"

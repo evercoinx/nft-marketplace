@@ -7,4 +7,5 @@ node_modules
 typechain
 typechain-types
 .env
+.solcx-lock-*
 coverage.json
