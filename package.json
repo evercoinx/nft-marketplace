@@ -24,15 +24,16 @@
 		"url": "git+https://github.com/evercoinx/nft-marketplace.git"
 	},
 	"keywords": [
-		"nft",
-		"marketplace"
+		"marketplace",
+		"nft"
 	],
 	"author": "Serge Grigorenko <serge.grigorenko@gmail.com>",
 	"license": "UNLICENSED",
+	"private": true,
 	"bugs": {
-		"url": "https://github.com/evercoinx/marketplace/issues"
+		"url": "https://github.com/evercoinx/nft-marketplace/issues"
 	},
-	"homepage": "https://github.com/evercoinx/marketplace#readme",
+	"homepage": "https://github.com/evercoinx/nft-marketplace#readme",
 	"dependencies": {
 		"@openzeppelin/contracts": "^4.7.1",
 		"@openzeppelin/contracts-upgradeable": "^4.7.1"
