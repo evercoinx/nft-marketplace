@@ -25,14 +25,16 @@ const schema = Joi.object()
 			.description("Marketplace contract address"),
 		ALCHEMY_API_KEY: Joi.string().required().length(32).alphanum().description("Alchemy API key"),
 		ETHERSCAN_API_KEY: Joi.string().required().length(34).alphanum().description("Etherscan API Key"),
-		GOERLI_MNEMONIC: Joi.string().required().description("Account mnemonic for Goerli network"),
-		GOERLI_PASSPHRASE: Joi.string().optional().allow("").description("Account passphrase for Goerli network"),
-		GOERLI_SENDER_ADDRESS: Joi.string()
+		GOERLI_SENDER_MNEMONIC: Joi.string().required().description("Sender's mnemonic for Goerli network"),
+		GOERLI_SENDER_PASSPHRASE: Joi.string()
 			.optional()
 			.allow("")
+			.description("Sender's passphrase for Goerli network"),
+		GOERLI_SENDER_ADDRESS: Joi.string()
+			.required()
 			.length(42)
 			.alphanum()
-			.description("Sender address for Goerli network"),
+			.description("Sender's address for Goerli network"),
 	})
 	.unknown();
 
@@ -50,8 +52,8 @@ if (error) {
 //eslint-disable-next-line @typescript-eslint/no-unused-vars
 extendConfig((config: HardhatConfig, userConfig: Readonly<HardhatUserConfig>) => {
 	const goerliAccounts = {
-		mnemonic: envVars.GOERLI_MNEMONIC,
-		passphrase: envVars.GOERLI_PASSPHRASE,
+		mnemonic: envVars.GOERLI_SENDER_MNEMONIC,
+		passphrase: envVars.GOERLI_SENDER_PASSPHRASE,
 		initialIndex: 0,
 		count: 10,
 	};
@@ -61,20 +63,14 @@ extendConfig((config: HardhatConfig, userConfig: Readonly<HardhatUserConfig>) =>
 		ethereumGoerli: {
 			url: `https://eth-goerli.alchemyapi.io/v2/${envVars.ALCHEMY_API_KEY}`,
 			chainId: 5,
-			from: envVars.GOERLI_SENDER_ADDRESS || undefined,
-			accounts: {
-				...goerliAccounts,
-				path: "m/44'/60'/0'/0",
-			},
+			from: envVars.GOERLI_SENDER_ADDRESS,
+			accounts: goerliAccounts,
 		} as HttpNetworkConfig,
 		optimismGoerli: {
 			url: `https://opt-goerli.g.alchemy.com/v2/${envVars.ALCHEMY_API_KEY}`,
 			chainId: 420,
-			from: envVars.GOERLI_SENDER_ADDRESS || undefined,
-			accounts: {
-				...goerliAccounts,
-				path: "m/44'/614'/0'/0",
-			},
+			from: envVars.GOERLI_SENDER_ADDRESS,
+			accounts: goerliAccounts,
 		} as HttpNetworkConfig,
 	};
 
@@ -89,14 +85,15 @@ extendConfig((config: HardhatConfig, userConfig: Readonly<HardhatUserConfig>) =>
 					browserURL: "https://goerli.etherscan.io",
 				},
 			},
-			{
-				network: "optimismGoerli",
-				chainId: 420,
-				urls: {
-					apiURL: "https://api-goerli-optimistic.etherscan.io/api",
-					browserURL: "https://goerli-optimistic.etherscan.io",
-				},
-			},
+			// TODO Verify this configuration when the Optimistic Goerli testnet is launched at the Etherscan explorer.
+			// {
+			// 	network: "optimismGoerli",
+			// 	chainId: 420,
+			// 	urls: {
+			// 		apiURL: "https://api-goerli-optimistic.etherscan.io/api",
+			// 		browserURL: "https://goerli-optimistic.etherscan.io",
+			// 	},
+			// },
 		],
 	};
 });

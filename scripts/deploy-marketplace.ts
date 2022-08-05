@@ -1,17 +1,19 @@
 import { envVars, ethers, network, upgrades } from "hardhat";
 
 async function main() {
-	let Marketplace = await ethers.getContractFactory("Marketplace");
-	if (network.config.from) {
-		const deployer = await ethers.getSigner(network.config.from);
-		Marketplace = Marketplace.connect(deployer);
-	}
+	const deployer = network.config.from ? await ethers.getSigner(network.config.from) : (await ethers.getSigners())[0];
+	console.log(`Deployer's address is ${deployer.address}`);
 
+	const Marketplace = await ethers.getContractFactory("Marketplace");
 	const listingFee = ethers.utils.parseEther(envVars.marketplace.listingFee.toString());
-	const marketplace = await upgrades.deployProxy(Marketplace, [listingFee, envVars.marketplace.withdrawalPeriod]);
+
+	const marketplace = await upgrades.deployProxy(Marketplace.connect(deployer), [
+		listingFee,
+		envVars.marketplace.withdrawalPeriod,
+	]);
 
 	await marketplace.deployed();
-	console.log(`Marketplace is deployed to ${marketplace.address}`);
+	console.log(`Marketplace proxy contract is deployed at ${marketplace.address}`);
 }
 
 main().catch((error) => {
