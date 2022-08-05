@@ -19,13 +19,20 @@ const schema = Joi.object()
 			.description("Marketplace withdrawal wait period (in seconds)"),
 		MARKETPLACE_ADDRESS: Joi.string()
 			.optional()
-			.length(42)
 			.allow("")
+			.length(42)
 			.alphanum()
 			.description("Marketplace contract address"),
 		ALCHEMY_API_KEY: Joi.string().required().length(32).alphanum().description("Alchemy API key"),
 		ETHERSCAN_API_KEY: Joi.string().required().length(34).alphanum().description("Etherscan API Key"),
-		GOERLI_PRIVATE_KEY: Joi.string().required().length(66).alphanum().description("Private key for Goerli network"),
+		GOERLI_MNEMONIC: Joi.string().required().description("Account mnemonic for Goerli network"),
+		GOERLI_PASSPHRASE: Joi.string().optional().allow("").description("Account passphrase for Goerli network"),
+		GOERLI_SENDER_ADDRESS: Joi.string()
+			.optional()
+			.allow("")
+			.length(42)
+			.alphanum()
+			.description("Sender address for Goerli network"),
 	})
 	.unknown();
 
@@ -42,25 +49,52 @@ if (error) {
 
 //eslint-disable-next-line @typescript-eslint/no-unused-vars
 extendConfig((config: HardhatConfig, userConfig: Readonly<HardhatUserConfig>) => {
+	const goerliAccounts = {
+		mnemonic: envVars.GOERLI_MNEMONIC,
+		passphrase: envVars.GOERLI_PASSPHRASE,
+		initialIndex: 0,
+		count: 10,
+	};
+
 	config.networks = {
 		...config.networks,
-		goerli: {
+		ethereumGoerli: {
 			url: `https://eth-goerli.alchemyapi.io/v2/${envVars.ALCHEMY_API_KEY}`,
-			accounts: [envVars.GOERLI_PRIVATE_KEY],
+			chainId: 5,
+			from: envVars.GOERLI_SENDER_ADDRESS || undefined,
+			accounts: {
+				...goerliAccounts,
+				path: "m/44'/60'/0'/0",
+			},
+		} as HttpNetworkConfig,
+		optimismGoerli: {
+			url: `https://opt-goerli.g.alchemy.com/v2/${envVars.ALCHEMY_API_KEY}`,
+			chainId: 420,
+			from: envVars.GOERLI_SENDER_ADDRESS || undefined,
+			accounts: {
+				...goerliAccounts,
+				path: "m/44'/614'/0'/0",
+			},
 		} as HttpNetworkConfig,
 	};
 
 	config.etherscan = {
-		apiKey: {
-			goerli: envVars.ETHERSCAN_API_KEY,
-		},
+		apiKey: envVars.ETHERSCAN_API_KEY,
 		customChains: [
 			{
-				network: "goerli",
+				network: "ethereumGoerli",
 				chainId: 5,
 				urls: {
 					apiURL: "https://api-goerli.etherscan.io/api",
 					browserURL: "https://goerli.etherscan.io",
+				},
+			},
+			{
+				network: "optimismGoerli",
+				chainId: 420,
+				urls: {
+					apiURL: "https://api-goerli-optimistic.etherscan.io/api",
+					browserURL: "https://goerli-optimistic.etherscan.io",
 				},
 			},
 		],
