@@ -12,29 +12,40 @@ const PLUGIN_NAME = "configurator";
 
 const schema = Joi.object()
 	.keys({
-		MARKETPLACE_LISTING_FEE: Joi.number().required().description("Marketplace listing fee (in ETH)"),
+		MARKETPLACE_LISTING_FEE: Joi.number().required().description("The listing fee for the marketplace (in ETH)"),
 		MARKETPLACE_WITHDRAWAL_PERIOD: Joi.number()
 			.required()
 			.integer()
-			.description("Marketplace withdrawal wait period (in seconds)"),
+			.description("The withdrawal wait period for the marketplaced (in seconds)"),
 		MARKETPLACE_ADDRESS: Joi.string()
 			.optional()
 			.allow("")
-			.length(42)
+			.regex(/^0x[0-9A-Fa-f]{40}$/)
 			.alphanum()
-			.description("Marketplace contract address"),
-		ALCHEMY_API_KEY: Joi.string().required().length(32).alphanum().description("Alchemy API key"),
-		ETHERSCAN_API_KEY: Joi.string().required().length(34).alphanum().description("Etherscan API Key"),
-		GOERLI_SENDER_MNEMONIC: Joi.string().required().description("Sender's mnemonic for Goerli network"),
+			.description("The contract address of the marketplace"),
+		ALCHEMY_API_KEY: Joi.string()
+			.required()
+			.length(32)
+			.alphanum()
+			.description("The API key of the Alchemy node provider"),
+		ETHERSCAN_API_KEY: Joi.string()
+			.required()
+			.length(34)
+			.alphanum()
+			.description("The API key of the Etherscan explorer"),
+		GOERLI_SENDER_MNEMONIC: Joi.string()
+			.required()
+			.regex(/[a-z ]{12,24}/)
+			.description("The sender's mnemonic for the Goerli network"),
 		GOERLI_SENDER_PASSPHRASE: Joi.string()
 			.optional()
 			.allow("")
-			.description("Sender's passphrase for Goerli network"),
+			.description("The sender's passphrase for the Goerli network"),
 		GOERLI_SENDER_ADDRESS: Joi.string()
 			.required()
-			.length(42)
+			.regex(/^0x[0-9A-Fa-f]{40}$/)
 			.alphanum()
-			.description("Sender's address for Goerli network"),
+			.description("The sender's address for the Goerli network"),
 	})
 	.unknown();
 

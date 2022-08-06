@@ -3,7 +3,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 import "./plugins/configurator";
 
-// Dynamic configuration should be defined in the configurator plugin.
+// The dynamic configuration should be defined in the configurator plugin.
 const config: HardhatUserConfig = {
 	defaultNetwork: "hardhat",
 	networks: {
