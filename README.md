@@ -23,14 +23,14 @@ with the ERC-721 standard. The marketplace exposes the following functionality t
 -   TransparentUpgradeableProxy: https://blockscout.com/optimism/goerli/address/0xEAbb04Ae3C37311929fbF325398374d7414eB51B
 -   ProxyAdmin: https://blockscout.com/optimism/goerli/address/0xD3cf8fFb1A65ED3ab6586679FA31Be34FE902D98
 
-## Installation
+## Install
 
 ```bash
 # install application dependencies
 $ npm install
 ```
 
-## Preparation
+## Prepare
 
 ```bash
 # create the .env file with the default configuration
@@ -64,11 +64,40 @@ $ npm run test
 $ npm run coverage
 ```
 
+## Analyze
+
+```bash
+# analyze the contracts
+$ npm run analyze
+```
+
+## Flatten
+
+```bash
+# flatten the contracts
+$ npm run flatten
+```
+
 ## Compile
 
 ```bash
 # compile the contracts
 $ npm run compile
+```
+
+## Clean
+
+```bash
+# clean up the cache and artificats
+$ npm run clean
+```
+
+## Node
+
+```bash
+# spin up a local node and interract with it
+$ npm run node
+$ npm run console
 ```
 
 ## Deploy
@@ -81,14 +110,17 @@ $ npm run deploy:hardhat
 $ npm run node
 $ npm run deploy:localhost
 
-# deploy the contracts to the goerli network
-$ npm run deploy:goerli
+# deploy the contracts to the ethereum goerli network
+$ npm run deploy:eth-goerli
+
+# deploy the contracts to the optimism goerli network
+$ npm run deploy:opt-goerli
 ```
 
 ## Verify
 
 ```bash
-# verify the marketplace contract in the goerli network
+# verify the contracts in the ethereum goerli network
 $ sed -r -i 's/^(MARKETPLACE_ADDRESS=)/\1<YOUR_MARKETPLACE_ADDRESS>/' .env
-$ npm run deploy:goerli
+$ npm run verify:eth-goerli
 ```
