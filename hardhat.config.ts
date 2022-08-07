@@ -3,6 +3,7 @@ import Joi from "joi";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomiclabs/hardhat-etherscan";
 import "@openzeppelin/hardhat-upgrades";
+import "hardhat-gas-reporter";
 import "./plugins/env-vars";
 
 const schema = Joi.object()
@@ -30,6 +31,11 @@ const schema = Joi.object()
 			.regex(/^0x[0-9A-Fa-f]{40}$/)
 			.alphanum()
 			.description("The sender's address for the Goerli network"),
+		REPORT_GAS: Joi.string()
+			.optional()
+			.valid("true", "false")
+			.default("false")
+			.description("Report gas usage in tests"),
 	})
 	.unknown();
 
@@ -95,6 +101,10 @@ const config: HardhatUserConfig = {
 			// 	},
 			// },
 		],
+	},
+	gasReporter: {
+		enabled: envVars.REPORT_GAS === "true",
+		excludeContracts: ["DummyFT", "DummyNFT", "ERC20", "ERC721", "EscrowUpgradeable", "MarketplaceUpgraded"],
 	},
 	solidity: {
 		version: "0.8.9",

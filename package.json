@@ -7,7 +7,8 @@
 		"format": "prettier --write \"plugins/**/*.ts\" \"scripts/**/*.ts\" \"test/**/*.ts\"",
 		"lint": "eslint --fix \"{plugins,scripts,test}/**/*.ts\"",
 		"test": "hardhat test",
-		"coverage": "hardhat coverage",
+		"test:cover": "hardhat coverage",
+		"test:gas": "REPORT_GAS=true hardhat test",
 		"preanalyze": "docker pull mythril/myth",
 		"analyze": "docker run --rm -v $INIT_CWD:/tmp mythril/myth analyze /tmp/contracts/Marketplace.sol --solc-json /tmp/solc.json",
 		"flatten": "hardhat flatten contracts/Marketplace.sol > .artifacts/Marketplace-flattened.sol",
@@ -52,9 +53,10 @@
 		"eslint-config-prettier": "^8.5.0",
 		"eslint-plugin-prettier": "^4.2.1",
 		"hardhat": "^2.10.1",
+		"hardhat-gas-reporter": "^1.0.8",
 		"husky": "^8.0.1",
 		"joi": "^17.6.0",
 		"prettier": "^2.7.1",
-		"prettier-plugin-solidity": "^1.0.0-dev.22"
+		"prettier-plugin-solidity": "^1.0.0-beta.24"
 	}
 }
