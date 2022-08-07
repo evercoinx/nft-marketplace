@@ -6,7 +6,7 @@ import { Marketplace } from "../Marketplace.sol";
 /**
  * @dev This contract is used to test upgradeability of the base Marketplace contract.
  */
-contract MarketplaceUpgraded is Marketplace {
+contract TestMarketplaceV2 is Marketplace {
 	uint256 public newProperty;
 
 	function setNewProperty(uint256 newProperty_) external {

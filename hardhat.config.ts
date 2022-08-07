@@ -104,7 +104,7 @@ const config: HardhatUserConfig = {
 	},
 	gasReporter: {
 		enabled: envVars.REPORT_GAS === "true",
-		excludeContracts: ["DummyFT", "DummyNFT", "ERC20", "ERC721", "EscrowUpgradeable", "MarketplaceUpgraded"],
+		excludeContracts: ["ERC20", "ERC721", "EscrowUpgradeable", "TestMarketplaceV2", "TestFT", "TestNFT"],
 	},
 	solidity: {
 		version: "0.8.9",

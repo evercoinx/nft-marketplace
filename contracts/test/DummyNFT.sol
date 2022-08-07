@@ -9,13 +9,13 @@ import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
  * @dev This contract is used to test interaction between any non-fungible token and relevant methods implemented on the
  * Marketplace contract.
  */
-contract DummyNFT is ERC721URIStorage, Ownable {
+contract TestNFT is Ownable, ERC721URIStorage {
 	using Counters for Counters.Counter;
 	Counters.Counter private _tokenIds;
 
 	event TokenMinted(uint256 indexed tokenId);
 
-	constructor() ERC721("Dummy NFT", "DNFT") {}
+	constructor() ERC721("Test NFT", "TNFT") {}
 
 	function mint(address owner, string memory tokenURI) public onlyOwner {
 		uint256 newTokenId = _tokenIds.current();
