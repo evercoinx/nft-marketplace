@@ -20,8 +20,9 @@
 		"deploy:localhost": "hardhat run --network localhost scripts/deploy-marketplace.ts",
 		"deploy:eth-goerli": "hardhat run --network ethereumGoerli scripts/deploy-marketplace.ts",
 		"deploy:opt-goerli": "hardhat run --network optimismGoerli scripts/deploy-marketplace.ts",
+		"deploy:pol-mumbai": "hardhat run --network polygonMumbai scripts/deploy-marketplace.ts",
 		"verify:eth-goerli": "hardhat run --network ethereumGoerli scripts/verify-marketplace.ts",
-		"verify:opt-goerli": "hardhat run --network optimismGoerli scripts/verify-marketplace.ts"
+		"verify:pol-mumbai": "hardhat run --network polygonMumbai scripts/verify-marketplace.ts"
 	},
 	"repository": {
 		"type": "git",

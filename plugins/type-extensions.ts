@@ -1,6 +1,6 @@
 import "hardhat/types/runtime";
 
-export interface EnvVars {
+interface EnvVars {
 	marketplace: {
 		listingFee: number;
 		withdrawalPeriod: number;

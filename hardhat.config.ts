@@ -10,23 +10,27 @@ const schema = Joi.object()
 	.keys({
 		ALCHEMY_API_KEY: Joi.string()
 			.required()
-			.length(32)
-			.alphanum()
-			.description("The API key of the Alchemy node provider"),
+			.regex(/^[0-9A-Za-z_-]{32}$/)
+			.description("The API key of the Alchemy provider"),
 		ETHERSCAN_API_KEY: Joi.string()
 			.required()
 			.length(34)
 			.alphanum()
 			.description("The API key of the Etherscan explorer"),
-		GOERLI_SENDER_MNEMONIC: Joi.string()
+		POLYGONSCAN_API_KEY: Joi.string()
 			.required()
-			.regex(/[a-z ]{12,24}/)
+			.length(34)
+			.alphanum()
+			.description("The API key of the Polygon explorer"),
+		TESTNET_SENDER_MNEMONIC: Joi.string()
+			.required()
+			.regex(/^[a-z ]+/)
 			.description("The sender's mnemonic for the Goerli network"),
-		GOERLI_SENDER_PASSPHRASE: Joi.string()
+		TESTNET_SENDER_PASSPHRASE: Joi.string()
 			.optional()
 			.allow("")
 			.description("The sender's passphrase for the Goerli network"),
-		GOERLI_SENDER_ADDRESS: Joi.string()
+		TESTNET_SENDER_ADDRESS: Joi.string()
 			.required()
 			.regex(/^0x[0-9A-Fa-f]{40}$/)
 			.alphanum()
@@ -47,12 +51,12 @@ const { value: envVars, error } = schema
 	})
 	.validate(process.env);
 if (error) {
-	throw error;
+	throw new Error(error.details[0]?.message);
 }
 
-const goerliAccounts = {
-	mnemonic: envVars.GOERLI_SENDER_MNEMONIC,
-	passphrase: envVars.GOERLI_SENDER_PASSPHRASE,
+const testnetHDAccounts = {
+	mnemonic: envVars.TESTNET_SENDER_MNEMONIC,
+	passphrase: envVars.TESTNET_SENDER_PASSPHRASE,
 	initialIndex: 0,
 	count: 10,
 };
@@ -70,18 +74,27 @@ const config: HardhatUserConfig = {
 		ethereumGoerli: {
 			url: `https://eth-goerli.alchemyapi.io/v2/${envVars.ALCHEMY_API_KEY}`,
 			chainId: 5,
-			from: envVars.GOERLI_SENDER_ADDRESS,
-			accounts: goerliAccounts,
+			from: envVars.TESTNET_SENDER_ADDRESS,
+			accounts: testnetHDAccounts,
+		},
+		polygonMumbai: {
+			url: `https://polygon-mumbai.g.alchemy.com/v2/${envVars.ALCHEMY_API_KEY}`,
+			chainId: 80001,
+			from: envVars.TESTNET_SENDER_ADDRESS,
+			accounts: testnetHDAccounts,
 		},
 		optimismGoerli: {
 			url: `https://opt-goerli.g.alchemy.com/v2/${envVars.ALCHEMY_API_KEY}`,
 			chainId: 420,
-			from: envVars.GOERLI_SENDER_ADDRESS,
-			accounts: goerliAccounts,
+			from: envVars.TESTNET_SENDER_ADDRESS,
+			accounts: testnetHDAccounts,
 		},
 	},
 	etherscan: {
-		apiKey: envVars.ETHERSCAN_API_KEY,
+		apiKey: {
+			ethereumGoerli: envVars.ETHERSCAN_API_KEY,
+			polygonMumbai: envVars.POLYGONSCAN_API_KEY,
+		},
 		customChains: [
 			{
 				network: "ethereumGoerli",
@@ -91,15 +104,14 @@ const config: HardhatUserConfig = {
 					browserURL: "https://goerli.etherscan.io",
 				},
 			},
-			// TODO Verify this configuration when the Optimistic Goerli testnet is launched at the Etherscan explorer.
-			// {
-			// 	network: "optimismGoerli",
-			// 	chainId: 420,
-			// 	urls: {
-			// 		apiURL: "https://api-goerli-optimistic.etherscan.io/api",
-			// 		browserURL: "https://goerli-optimistic.etherscan.io",
-			// 	},
-			// },
+			{
+				network: "polygonMumbai",
+				chainId: 80001,
+				urls: {
+					apiURL: "https://api-testnet.polygonscan.com/api",
+					browserURL: "https://mumbai.polygonscan.com",
+				},
+			},
 		],
 	},
 	gasReporter: {
