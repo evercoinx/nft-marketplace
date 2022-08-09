@@ -79,7 +79,10 @@ $ npm run test:gas
 
 ```bash
 # analyze the contracts with mythril
-$ npm run analyze
+$ npm run analyze:mythril
+
+# analyze the contracts with slither
+$ npm run analyze:slither
 ```
 
 ### Flatten
