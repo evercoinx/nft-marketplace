@@ -6,17 +6,17 @@ describe("Markeplace", function () {
     async function deployMarketplaceFixture() {
         const [deployer, user, user2] = await ethers.getSigners();
 
-        const TestNFT = await ethers.getContractFactory("TestNFT");
-        const testNFT = await TestNFT.deploy();
+        const TestERC721 = await ethers.getContractFactory("TestERC721");
+        const testERC721 = await TestERC721.deploy();
 
-        await testNFT.mint(
+        await testERC721.mint(
             user.address,
             "https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pYrDKEoiu",
         );
-        const events = await testNFT.queryFilter(testNFT.filters.TokenMinted());
+        const events = await testERC721.queryFilter(testERC721.filters.TokenMinted());
 
-        const TestFT = await ethers.getContractFactory("TestFT");
-        const testFT = await TestFT.deploy(1_000_000);
+        const TestERC20 = await ethers.getContractFactory("TestERC20");
+        const testERC20 = await TestERC20.deploy(1_000_000);
 
         const listingFee = ethers.utils.parseEther("0.001");
         const withdrawalPeriod = 3 * 24 * 60 * 60; // 3 days
@@ -28,8 +28,8 @@ describe("Markeplace", function () {
 
         return {
             marketplace,
-            testNFT,
-            testFT,
+            testERC721,
+            testERC20,
             deployer,
             user,
             user2,
@@ -70,9 +70,11 @@ describe("Markeplace", function () {
         });
 
         it("Should return the zero listing for an account which haven't listed a token yet", async function () {
-            const { marketplace, testNFT, tokenId } = await loadFixture(deployMarketplaceFixture);
+            const { marketplace, testERC721, tokenId } = await loadFixture(
+                deployMarketplaceFixture,
+            );
 
-            const actual = await marketplace.getListing(testNFT.address, tokenId);
+            const actual = await marketplace.getListing(testERC721.address, tokenId);
             expect(actual).to.contain.keys("price", "seller");
             expect(actual.price).to.be.equal(0);
             expect(actual.seller).to.be.equal(ethers.constants.AddressZero);
@@ -180,168 +182,168 @@ describe("Markeplace", function () {
     describe("List a token", function () {
         describe("Validations", function () {
             it("Should revert with the right error if called from an non-owner account", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(user2.address, tokenId);
+                await testERC721.connect(user).approve(user2.address, tokenId);
 
                 const promise = marketplace
                     .connect(user2)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                 await expect(promise)
                     .to.be.revertedWithCustomError(marketplace, "InvalidNFTOwner")
                     .withArgs(user2.address);
             });
 
             it("Should revert with the right error if the marketplace is not an approved operator", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
                 const promise = marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                 await expect(promise)
                     .to.be.revertedWithCustomError(marketplace, "NFTNotApproved")
-                    .withArgs(testNFT.address, tokenId);
+                    .withArgs(testERC721.address, tokenId);
             });
 
             it("Should revert with the right error if a token has been already listed", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const promise = marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                 await expect(promise)
                     .to.be.revertedWithCustomError(marketplace, "TokenAlreadyListed")
-                    .withArgs(testNFT.address, tokenId);
+                    .withArgs(testERC721.address, tokenId);
             });
 
             it("Should revert with the right error if called with the zero price", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId } = await loadFixture(
+                const { marketplace, testERC721, user, listingFee, tokenId } = await loadFixture(
                     deployMarketplaceFixture,
                 );
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
 
                 const promise = marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, 0, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, 0, { value: listingFee });
                 await expect(promise)
                     .to.be.revertedWithCustomError(marketplace, "ZeroPrice")
                     .withArgs();
             });
 
             it("Should revert with the right error if called with the zero listing fee", async function () {
-                const { marketplace, testNFT, user, tokenId, tokenPrice } = await loadFixture(
+                const { marketplace, testERC721, user, tokenId, tokenPrice } = await loadFixture(
                     deployMarketplaceFixture,
                 );
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
 
                 const promise = marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice);
+                    .listToken(testERC721.address, tokenId, tokenPrice);
                 await expect(promise)
                     .to.be.revertedWithCustomError(marketplace, "InvalidListingFee")
-                    .withArgs(testNFT.address, tokenId, 0);
+                    .withArgs(testERC721.address, tokenId, 0);
             });
 
             it("Should revert with the right error if called with a listing fee greater than expected", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
 
                 const newListingFee = listingFee.add(1);
                 const promise = marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: newListingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: newListingFee });
                 await expect(promise)
                     .to.be.revertedWithCustomError(marketplace, "InvalidListingFee")
-                    .withArgs(testNFT.address, tokenId, newListingFee);
+                    .withArgs(testERC721.address, tokenId, newListingFee);
             });
 
             it("Should revert without a reason if called with a non-NFT contract", async function () {
-                const { marketplace, testFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC20, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
                 const promise = marketplace
                     .connect(user)
-                    .listToken(testFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC20.address, tokenId, tokenPrice, { value: listingFee });
                 await expect(promise).to.be.revertedWithoutReason();
             });
 
             it("Shouldn't revert if called with the right parameters", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
 
                 const promise = marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                 await expect(promise).not.to.be.reverted;
             });
         });
 
         describe("Events", function () {
             it("Should emit an event when listing a token", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
 
                 const promise = marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                 await expect(promise)
                     .to.emit(marketplace, "TokenListed")
-                    .withArgs(user.address, testNFT.address, tokenId, tokenPrice);
+                    .withArgs(user.address, testERC721.address, tokenId, tokenPrice);
             });
         });
 
         describe("Post actions", function () {
             it("Should return the right listing item after listing a token", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
-                const actual = await marketplace.getListing(testNFT.address, tokenId);
+                const actual = await marketplace.getListing(testERC721.address, tokenId);
                 expect(actual).to.contain.keys("price", "seller");
                 expect(actual.price).to.be.equal(tokenPrice);
                 expect(actual.seller).to.be.equal(user.address);
             });
 
             it("Should return the right listing count after listing a token", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const actual = await marketplace.listingCount();
                 expect(actual).to.be.equal(1);
             });
 
             it("Should change the buyer's balance after listing a token", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 const promise = marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 await expect(promise).to.changeEtherBalances(
                     [user, marketplace],
@@ -354,109 +356,111 @@ describe("Markeplace", function () {
     describe("Delist a token", function () {
         describe("Validations", function () {
             it("Should revert with the right error if called from an non-owner account", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
-                await testNFT.connect(user).approve(user2.address, tokenId);
+                await testERC721.connect(user).approve(user2.address, tokenId);
 
-                const promise = marketplace.connect(user2).delistToken(testNFT.address, tokenId);
+                const promise = marketplace
+                    .connect(user2)
+                    .delistToken(testERC721.address, tokenId);
                 await expect(promise)
                     .to.be.revertedWithCustomError(marketplace, "InvalidNFTOwner")
                     .withArgs(user2.address);
             });
 
             it("Should revert with the right error if a token hasn't been listed yet", async function () {
-                const { marketplace, testNFT, user, tokenId } = await loadFixture(
+                const { marketplace, testERC721, user, tokenId } = await loadFixture(
                     deployMarketplaceFixture,
                 );
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
 
-                const promise = marketplace.connect(user).delistToken(testNFT.address, tokenId);
+                const promise = marketplace.connect(user).delistToken(testERC721.address, tokenId);
                 await expect(promise)
                     .to.be.revertedWithCustomError(marketplace, "TokenNotListed")
-                    .withArgs(testNFT.address, tokenId);
+                    .withArgs(testERC721.address, tokenId);
             });
 
             it("Should reject if called along with sending ether", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const promise = marketplace
                     .connect(user)
-                    .delistToken(testNFT.address, tokenId, { value: 1 });
+                    .delistToken(testERC721.address, tokenId, { value: 1 });
                 await expect(promise).to.be.rejected;
             });
 
             it("Shouldn't revert if called with the right parameters", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
-                const promise = marketplace.connect(user).delistToken(testNFT.address, tokenId);
+                const promise = marketplace.connect(user).delistToken(testERC721.address, tokenId);
                 await expect(promise).not.be.reverted;
             });
         });
 
         describe("Events", function () {
             it("Should emit an event when delisting a token", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
-                const promise = marketplace.connect(user).delistToken(testNFT.address, tokenId);
+                const promise = marketplace.connect(user).delistToken(testERC721.address, tokenId);
                 await expect(promise)
                     .to.emit(marketplace, "TokenDelisted")
-                    .withArgs(user.address, testNFT.address, tokenId);
+                    .withArgs(user.address, testERC721.address, tokenId);
             });
         });
 
         describe("Post actions", function () {
             it("Should return an empty listing after delisting a token", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
-                await marketplace.connect(user).delistToken(testNFT.address, tokenId);
+                await marketplace.connect(user).delistToken(testERC721.address, tokenId);
 
-                const actual = await marketplace.getListing(testNFT.address, tokenId);
+                const actual = await marketplace.getListing(testERC721.address, tokenId);
                 expect(actual).to.contain.keys("price", "seller");
                 expect(actual.price).to.be.equal(0);
                 expect(actual.seller).to.be.equal(ethers.constants.AddressZero);
             });
 
             it("Should return the right listing count after delisting a token", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
-                await marketplace.connect(user).delistToken(testNFT.address, tokenId);
+                await marketplace.connect(user).delistToken(testERC721.address, tokenId);
 
                 const actual = await marketplace.listingCount();
                 expect(actual).to.be.equal(0);
@@ -467,42 +471,42 @@ describe("Markeplace", function () {
     describe("Buy a token", function () {
         describe("Validations", function () {
             it("Should revert with the rigth error if a token hasn't been listed yet", async function () {
-                const { marketplace, testNFT, user, user2, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
 
                 const promise = marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
                 await expect(promise)
                     .be.revertedWithCustomError(marketplace, "TokenNotListed")
-                    .withArgs(testNFT.address, tokenId);
+                    .withArgs(testERC721.address, tokenId);
             });
 
             it("Should revert with the right error if an account removed its approval from the marketplace", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
-                await testNFT.connect(user).approve(ethers.constants.AddressZero, tokenId);
+                await testERC721.connect(user).approve(ethers.constants.AddressZero, tokenId);
 
                 const promise = marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
                 await expect(promise)
                     .to.be.revertedWithCustomError(marketplace, "NFTNotApproved")
-                    .withArgs(testNFT.address, tokenId);
+                    .withArgs(testERC721.address, tokenId);
             });
 
             it("Should revert with the right error if an account transferred its token to another account", async function () {
                 const {
                     marketplace,
-                    testNFT,
+                    testERC721,
                     deployer,
                     user,
                     user2,
@@ -511,141 +515,143 @@ describe("Markeplace", function () {
                     tokenPrice,
                 } = await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
-                await testNFT.connect(user).transferFrom(user.address, deployer.address, tokenId);
+                await testERC721
+                    .connect(user)
+                    .transferFrom(user.address, deployer.address, tokenId);
 
                 const promise = marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
                 await expect(promise)
                     .to.be.revertedWithCustomError(marketplace, "NFTNotApproved")
-                    .withArgs(testNFT.address, tokenId);
+                    .withArgs(testERC721.address, tokenId);
             });
 
             it("Should revert with the right error if called with a price lower than expected", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const newTokenPrice = tokenPrice.sub(1);
                 const promise = marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: newTokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: newTokenPrice });
                 await expect(promise)
                     .be.revertedWithCustomError(marketplace, "InvalidListingPrice")
-                    .withArgs(testNFT.address, tokenId, newTokenPrice);
+                    .withArgs(testERC721.address, tokenId, newTokenPrice);
             });
 
             it("Should revert with the right error if called with a price greater than expected", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const newTokenPrice = tokenPrice.add(1);
                 const promise = marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: newTokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: newTokenPrice });
                 await expect(promise)
                     .be.revertedWithCustomError(marketplace, "InvalidListingPrice")
-                    .withArgs(testNFT.address, tokenId, newTokenPrice);
+                    .withArgs(testERC721.address, tokenId, newTokenPrice);
             });
 
             it("Should revert with the right error if called by the token's owner", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const promise = marketplace
                     .connect(user)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
                 await expect(promise)
                     .be.revertedWithCustomError(marketplace, "PurchaseForbidden")
                     .withArgs(user.address);
             });
 
             it("Shouldn't revert if called with the right parameters", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const promise = marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
                 await expect(promise).not.be.reverted;
             });
         });
 
         describe("Events", function () {
             it("Should emit an event when buying a token", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const promise = marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
                 await expect(promise)
                     .to.emit(marketplace, "TokenBought")
-                    .withArgs(user2.address, testNFT.address, tokenId, tokenPrice);
+                    .withArgs(user2.address, testERC721.address, tokenId, tokenPrice);
             });
         });
 
         describe("Post actions", function () {
             it("Should return an empty listing item after buying a token", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 await marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
 
-                const actual = await marketplace.getListing(testNFT.address, tokenId);
+                const actual = await marketplace.getListing(testERC721.address, tokenId);
                 expect(actual).to.contain.keys("price", "seller");
                 expect(actual.price).to.be.equal(0);
                 expect(actual.seller).to.be.equal(ethers.constants.AddressZero);
             });
 
             it("Should return the right payments after buying a token", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 await marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
 
                 const actual = await marketplace.payments(user.address);
                 expect(actual).to.be.equal(tokenPrice);
@@ -654,7 +660,7 @@ describe("Markeplace", function () {
             it("Should return the right payment date after buying a token", async function () {
                 const {
                     marketplace,
-                    testNFT,
+                    testERC721,
                     user,
                     user2,
                     listingFee,
@@ -663,14 +669,14 @@ describe("Markeplace", function () {
                     tokenPrice,
                 } = await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 await marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
                 const paymentDate = (await time.latest()) + withdrawalPeriod;
 
                 const actual = await marketplace.paymentDates(user.address);
@@ -678,51 +684,51 @@ describe("Markeplace", function () {
             });
 
             it("Should return the right listing count after delisting a token", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 await marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
 
                 const actual = await marketplace.listingCount();
                 expect(actual).to.be.equal(0);
             });
 
             it("Should change the token's owner after buying a token", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 await marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
 
-                const actual = await testNFT.ownerOf(tokenId);
+                const actual = await testERC721.ownerOf(tokenId);
                 expect(actual).to.equal(user2.address);
             });
 
             it("Should change the buyer's balance after buying a token", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const promise = marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
                 await expect(promise).to.changeEtherBalances(
                     [user2, user],
                     [tokenPrice.mul(-1), 0],
@@ -734,18 +740,18 @@ describe("Markeplace", function () {
     describe("Update a listing", function () {
         describe("Validations", function () {
             it("Should revert with the right error if called from an non-owner account", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const newTokenPrice = tokenPrice.mul(2);
                 const promise = marketplace
                     .connect(user2)
-                    .updateListing(testNFT.address, tokenId, newTokenPrice);
+                    .updateListing(testERC721.address, tokenId, newTokenPrice);
 
                 await expect(promise)
                     .to.be.revertedWithCustomError(marketplace, "InvalidNFTOwner")
@@ -753,33 +759,33 @@ describe("Markeplace", function () {
             });
 
             it("Should revert with the right error if a token has not been listed yet", async function () {
-                const { marketplace, testNFT, user, tokenId, tokenPrice } = await loadFixture(
+                const { marketplace, testERC721, user, tokenId, tokenPrice } = await loadFixture(
                     deployMarketplaceFixture,
                 );
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
 
                 const newTokenPrice = tokenPrice.mul(2);
                 const promise = marketplace
                     .connect(user)
-                    .updateListing(testNFT.address, tokenId, newTokenPrice);
+                    .updateListing(testERC721.address, tokenId, newTokenPrice);
                 await expect(promise)
                     .to.be.revertedWithCustomError(marketplace, "TokenNotListed")
-                    .withArgs(testNFT.address, tokenId);
+                    .withArgs(testERC721.address, tokenId);
             });
 
             it("Should revert with the right error if called with a zero price", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const promise = marketplace
                     .connect(user)
-                    .updateListing(testNFT.address, tokenId, 0);
+                    .updateListing(testERC721.address, tokenId, 0);
 
                 await expect(promise)
                     .to.be.revertedWithCustomError(marketplace, "ZeroPrice")
@@ -787,74 +793,74 @@ describe("Markeplace", function () {
             });
 
             it("Should reject if called along with sending ether", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const newTokenPrice = tokenPrice.mul(2);
                 const promise = marketplace
                     .connect(user)
-                    .updateListing(testNFT.address, tokenId, newTokenPrice, { value: 1 });
+                    .updateListing(testERC721.address, tokenId, newTokenPrice, { value: 1 });
                 await expect(promise).to.be.rejected;
             });
 
             it("Shouldn't revert if called with the right parameters", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const newTokenPrice = tokenPrice.mul(2);
                 const promise = marketplace
                     .connect(user)
-                    .updateListing(testNFT.address, tokenId, newTokenPrice);
+                    .updateListing(testERC721.address, tokenId, newTokenPrice);
                 await expect(promise).not.be.reverted;
             });
         });
 
         describe("Events", function () {
             it("Should emit an event when updating a listing", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const newTokenPrice = tokenPrice.mul(2);
                 const promise = marketplace
                     .connect(user)
-                    .updateListing(testNFT.address, tokenId, newTokenPrice);
+                    .updateListing(testERC721.address, tokenId, newTokenPrice);
                 await expect(promise)
                     .to.emit(marketplace, "TokenListed")
-                    .withArgs(user.address, testNFT.address, tokenId, newTokenPrice);
+                    .withArgs(user.address, testERC721.address, tokenId, newTokenPrice);
             });
         });
 
         describe("Post actions", function () {
             it("Should return the right listing item after delisting a token", async function () {
-                const { marketplace, testNFT, user, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 const newTokenPrice = tokenPrice.mul(2);
                 await marketplace
                     .connect(user)
-                    .updateListing(testNFT.address, tokenId, newTokenPrice);
+                    .updateListing(testERC721.address, tokenId, newTokenPrice);
 
-                const actual = await marketplace.getListing(testNFT.address, tokenId);
+                const actual = await marketplace.getListing(testERC721.address, tokenId);
                 expect(actual).to.contain.keys("price", "seller");
                 expect(actual.price).to.be.equal(newTokenPrice);
                 expect(actual.seller).to.be.equal(user.address);
@@ -866,13 +872,20 @@ describe("Markeplace", function () {
         describe("For a token's buyer", function () {
             describe("Validations", function () {
                 it("Should revert with the right error if called from a non-payee or non-owner account", async function () {
-                    const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
-                        await loadFixture(deployMarketplaceFixture);
+                    const {
+                        marketplace,
+                        testERC721,
+                        user,
+                        user2,
+                        listingFee,
+                        tokenId,
+                        tokenPrice,
+                    } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                     const promise = marketplace.connect(user2).withdrawPayments(user.address);
                     await expect(promise)
@@ -883,7 +896,7 @@ describe("Markeplace", function () {
                 it("Should revert with the right error if called from a payee account before finishing a withdrawal period", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         user,
                         user2,
                         listingFee,
@@ -892,13 +905,13 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                     await marketplace
                         .connect(user2)
-                        .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                        .buyToken(testERC721.address, tokenId, { value: tokenPrice });
 
                     await time.increase(withdrawalPeriod - 1);
                     const currentTimestamp = await time.latest();
@@ -912,7 +925,7 @@ describe("Markeplace", function () {
                 it("Shouldn't revert if called from a payee account after finishing a withdrawal period", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         user,
                         user2,
                         listingFee,
@@ -921,13 +934,13 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                     await marketplace
                         .connect(user2)
-                        .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                        .buyToken(testERC721.address, tokenId, { value: tokenPrice });
 
                     await time.increase(withdrawalPeriod);
 
@@ -938,7 +951,7 @@ describe("Markeplace", function () {
                 it("Should reject if called along with sending ether", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         user,
                         user2,
                         listingFee,
@@ -947,13 +960,13 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                     await marketplace
                         .connect(user2)
-                        .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                        .buyToken(testERC721.address, tokenId, { value: tokenPrice });
 
                     await time.increase(withdrawalPeriod);
 
@@ -966,7 +979,7 @@ describe("Markeplace", function () {
                 it("Shouldn't revert if called from the owner account after finishing a withdrawal period", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         user,
                         user2,
                         listingFee,
@@ -975,13 +988,13 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                     await marketplace
                         .connect(user2)
-                        .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                        .buyToken(testERC721.address, tokenId, { value: tokenPrice });
 
                     await time.increase(withdrawalPeriod);
 
@@ -992,7 +1005,7 @@ describe("Markeplace", function () {
                 it("Shouldn't revert if called from a payee account having no payments", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         user,
                         listingFee,
                         withdrawalPeriod,
@@ -1000,10 +1013,10 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                     await time.increase(withdrawalPeriod);
 
@@ -1016,7 +1029,7 @@ describe("Markeplace", function () {
                 it("Should emit an event when withdrawing a payment", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         user,
                         user2,
                         listingFee,
@@ -1025,13 +1038,13 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                     await marketplace
                         .connect(user2)
-                        .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                        .buyToken(testERC721.address, tokenId, { value: tokenPrice });
 
                     await time.increase(withdrawalPeriod);
 
@@ -1046,7 +1059,7 @@ describe("Markeplace", function () {
                 it("Should return the user's zero payment after withdrawing a payment", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         user,
                         user2,
                         listingFee,
@@ -1055,13 +1068,13 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                     await marketplace
                         .connect(user2)
-                        .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                        .buyToken(testERC721.address, tokenId, { value: tokenPrice });
 
                     await time.increase(withdrawalPeriod);
                     await marketplace.connect(user).withdrawPayments(user.address);
@@ -1073,7 +1086,7 @@ describe("Markeplace", function () {
                 it("Should change the user's balance after withdrawing a payment", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         deployer,
                         user,
                         user2,
@@ -1083,13 +1096,13 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                     await marketplace
                         .connect(user2)
-                        .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                        .buyToken(testERC721.address, tokenId, { value: tokenPrice });
 
                     await time.increase(withdrawalPeriod);
 
@@ -1107,7 +1120,7 @@ describe("Markeplace", function () {
                 it("Should revert with the right error if called from a non-owner account", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         deployer,
                         user,
                         user2,
@@ -1116,10 +1129,10 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                     const promise = marketplace.connect(user2).withdrawPayments(deployer.address);
                     await expect(promise)
@@ -1130,7 +1143,7 @@ describe("Markeplace", function () {
                 it("Should reject if called along with sending ether", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         deployer,
                         user,
                         listingFee,
@@ -1138,10 +1151,10 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                     const promise = marketplace.withdrawPayments(deployer.address, { value: 1 });
                     await expect(promise).to.be.rejected;
@@ -1150,7 +1163,7 @@ describe("Markeplace", function () {
                 it("Shouldn't revert if called with the right parameters", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         deployer,
                         user,
                         listingFee,
@@ -1158,10 +1171,10 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                     const promise = marketplace.withdrawPayments(deployer.address);
                     await expect(promise).not.to.be.reverted;
@@ -1172,7 +1185,7 @@ describe("Markeplace", function () {
                 it("Should emit an event when withdrawing a payment", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         deployer,
                         user,
                         listingFee,
@@ -1180,10 +1193,10 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                     const promise = marketplace.withdrawPayments(deployer.address);
                     await expect(promise)
@@ -1196,7 +1209,7 @@ describe("Markeplace", function () {
                 it("Should return the contrat owner's zero payment after withdrawing a payment", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         deployer,
                         user,
                         listingFee,
@@ -1204,10 +1217,10 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                     await marketplace.withdrawPayments(deployer.address);
 
@@ -1218,7 +1231,7 @@ describe("Markeplace", function () {
                 it("Should change the contract onwer's balance after withdrawing a payment", async function () {
                     const {
                         marketplace,
-                        testNFT,
+                        testERC721,
                         deployer,
                         user,
                         listingFee,
@@ -1226,10 +1239,10 @@ describe("Markeplace", function () {
                         tokenPrice,
                     } = await loadFixture(deployMarketplaceFixture);
 
-                    await testNFT.connect(user).approve(marketplace.address, tokenId);
+                    await testERC721.connect(user).approve(marketplace.address, tokenId);
                     await marketplace
                         .connect(user)
-                        .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                        .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                     const promise = await marketplace.withdrawPayments(deployer.address);
                     await expect(promise).to.changeEtherBalances(
@@ -1508,32 +1521,32 @@ describe("Markeplace", function () {
             });
 
             it("Should prevent users from buying tokens after pausing the contract", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                 await marketplace.pause();
 
                 const promise = marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
                 await expect(promise).to.be.revertedWith("Pausable: paused");
             });
 
             it("Should prevent users from withdrawing payments after pausing the contract", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                 await marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
                 await marketplace.pause();
 
                 const promise = marketplace.connect(user).withdrawPayments(user.address);
@@ -1612,27 +1625,27 @@ describe("Markeplace", function () {
             });
 
             it("Should allow users to buy tokens after unpausing the contract", async function () {
-                const { marketplace, testNFT, user, user2, listingFee, tokenId, tokenPrice } =
+                const { marketplace, testERC721, user, user2, listingFee, tokenId, tokenPrice } =
                     await loadFixture(deployMarketplaceFixture);
 
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
 
                 await marketplace.pause();
                 await marketplace.unpause();
 
                 const promise = marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
                 await expect(promise).not.to.be.reverted;
             });
 
             it("Should allow users to withdraw payments after unpausing the contract", async function () {
                 const {
                     marketplace,
-                    testNFT,
+                    testERC721,
                     user,
                     user2,
                     listingFee,
@@ -1640,13 +1653,13 @@ describe("Markeplace", function () {
                     tokenId,
                     tokenPrice,
                 } = await loadFixture(deployMarketplaceFixture);
-                await testNFT.connect(user).approve(marketplace.address, tokenId);
+                await testERC721.connect(user).approve(marketplace.address, tokenId);
                 await marketplace
                     .connect(user)
-                    .listToken(testNFT.address, tokenId, tokenPrice, { value: listingFee });
+                    .listToken(testERC721.address, tokenId, tokenPrice, { value: listingFee });
                 await marketplace
                     .connect(user2)
-                    .buyToken(testNFT.address, tokenId, { value: tokenPrice });
+                    .buyToken(testERC721.address, tokenId, { value: tokenPrice });
 
                 await marketplace.pause();
                 await marketplace.unpause();

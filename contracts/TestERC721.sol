@@ -6,16 +6,16 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
 
 /**
- * @dev This auxiliary contract is used to test interaction between any non-fungible token and relevant methods implemented on the
- * Marketplace contract.
+ * @dev This auxiliary ERC721-compliant contract is used to test interactions with the Marketplace
+ *  contract.
  */
-contract TestNFT is Ownable, ERC721URIStorage {
+contract TestERC721 is Ownable, ERC721URIStorage {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
 
     event TokenMinted(uint256 indexed tokenId);
 
-    constructor() ERC721("Test NFT", "TNFT") {}
+    constructor() ERC721("Test ERC721", "TERC721") {}
 
     function mint(address owner, string memory tokenURI) public onlyOwner {
         uint256 newTokenId = _tokenIds.current();

@@ -122,8 +122,8 @@ const config: HardhatUserConfig = {
             "EscrowUpgradeable",
             "TestMarketplace",
             "TestMarketplaceV2",
-            "TestFT",
-            "TestNFT",
+            "TestERC20",
+            "TestERC721",
         ],
     },
     solidity: {
