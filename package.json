@@ -1,63 +1,63 @@
 {
-	"name": "nft-marketplace",
-	"version": "1.0.0",
-	"description": "NFT Marketplace",
-	"scripts": {
-		"prepare": "husky install",
-		"format": "prettier --write \"plugins/**/*.ts\" \"scripts/**/*.ts\" \"test/**/*.ts\"",
-		"lint": "eslint --fix \"{plugins,scripts,test}/**/*.ts\"",
-		"test": "hardhat test",
-		"test:cover": "hardhat coverage",
-		"test:gas": "REPORT_GAS=true hardhat test",
-		"preanalyze": "docker pull mythril/myth",
-		"analyze": "docker run --rm -v $INIT_CWD:/tmp mythril/myth analyze /tmp/contracts/Marketplace.sol --solc-json /tmp/solc.json",
-		"flatten": "hardhat flatten contracts/Marketplace.sol > .artifacts/Marketplace-flattened.sol",
-		"compile": "hardhat compile",
-		"clean": "hardhat clean",
-		"node": "hardhat node",
-		"console": "hardhat console",
-		"deploy:hardhat": "hardhat run --network hardhat scripts/deploy-marketplace.ts",
-		"deploy:localhost": "hardhat run --network localhost scripts/deploy-marketplace.ts",
-		"deploy:eth-goerli": "hardhat run --network ethereumGoerli scripts/deploy-marketplace.ts",
-		"deploy:opt-goerli": "hardhat run --network optimismGoerli scripts/deploy-marketplace.ts",
-		"deploy:pol-mumbai": "hardhat run --network polygonMumbai scripts/deploy-marketplace.ts",
-		"verify:eth-goerli": "hardhat run --network ethereumGoerli scripts/verify-marketplace.ts",
-		"verify:pol-mumbai": "hardhat run --network polygonMumbai scripts/verify-marketplace.ts"
-	},
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/evercoinx/nft-marketplace.git"
-	},
-	"keywords": [
-		"marketplace",
-		"nft"
-	],
-	"author": "Serge Grigorenko <serge.grigorenko@gmail.com>",
-	"license": "UNLICENSED",
-	"private": true,
-	"bugs": {
-		"url": "https://github.com/evercoinx/nft-marketplace/issues"
-	},
-	"homepage": "https://github.com/evercoinx/nft-marketplace#readme",
-	"dependencies": {
-		"@openzeppelin/contracts": "^4.7.1",
-		"@openzeppelin/contracts-upgradeable": "^4.7.1"
-	},
-	"devDependencies": {
-		"@nomicfoundation/hardhat-toolbox": "^1.0.2",
-		"@nomiclabs/hardhat-etherscan": "^3.1.0",
-		"@openzeppelin/hardhat-upgrades": "^1.19.0",
-		"@typescript-eslint/eslint-plugin": "^5.30.7",
-		"@typescript-eslint/parser": "^5.30.7",
-		"dotenv": "^16.0.1",
-		"eslint": "^8.20.0",
-		"eslint-config-prettier": "^8.5.0",
-		"eslint-plugin-prettier": "^4.2.1",
-		"hardhat": "^2.10.1",
-		"hardhat-gas-reporter": "^1.0.8",
-		"husky": "^8.0.1",
-		"joi": "^17.6.0",
-		"prettier": "^2.7.1",
-		"prettier-plugin-solidity": "^1.0.0-beta.24"
-	}
+    "name": "nft-marketplace",
+    "version": "1.0.0",
+    "description": "NFT Marketplace",
+    "scripts": {
+        "prepare": "husky install",
+        "format": "prettier --write \"plugins/**/*.ts\" \"scripts/**/*.ts\" \"test/**/*.ts\"",
+        "lint": "eslint --fix \"{plugins,scripts,test}/**/*.ts\"",
+        "test": "hardhat test",
+        "test:cover": "hardhat coverage",
+        "test:gas": "REPORT_GAS=true hardhat test",
+        "preanalyze": "docker pull mythril/myth",
+        "analyze": "docker run --rm -v $INIT_CWD:/tmp mythril/myth analyze /tmp/contracts/Marketplace.sol --solc-json /tmp/solc.json",
+        "flatten": "hardhat flatten contracts/Marketplace.sol > .artifacts/Marketplace-flattened.sol",
+        "compile": "hardhat compile",
+        "clean": "hardhat clean",
+        "node": "hardhat node",
+        "console": "hardhat console",
+        "deploy:hardhat": "hardhat run --network hardhat scripts/deploy-marketplace.ts",
+        "deploy:localhost": "hardhat run --network localhost scripts/deploy-marketplace.ts",
+        "deploy:eth-goerli": "hardhat run --network ethereumGoerli scripts/deploy-marketplace.ts",
+        "deploy:opt-goerli": "hardhat run --network optimismGoerli scripts/deploy-marketplace.ts",
+        "deploy:pol-mumbai": "hardhat run --network polygonMumbai scripts/deploy-marketplace.ts",
+        "verify:eth-goerli": "hardhat run --network ethereumGoerli scripts/verify-marketplace.ts",
+        "verify:pol-mumbai": "hardhat run --network polygonMumbai scripts/verify-marketplace.ts"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/evercoinx/nft-marketplace.git"
+    },
+    "keywords": [
+        "marketplace",
+        "nft"
+    ],
+    "author": "Serge Grigorenko <serge.grigorenko@gmail.com>",
+    "license": "UNLICENSED",
+    "private": true,
+    "bugs": {
+        "url": "https://github.com/evercoinx/nft-marketplace/issues"
+    },
+    "homepage": "https://github.com/evercoinx/nft-marketplace#readme",
+    "dependencies": {
+        "@openzeppelin/contracts": "^4.7.1",
+        "@openzeppelin/contracts-upgradeable": "^4.7.1"
+    },
+    "devDependencies": {
+        "@nomicfoundation/hardhat-toolbox": "^1.0.2",
+        "@nomiclabs/hardhat-etherscan": "^3.1.0",
+        "@openzeppelin/hardhat-upgrades": "^1.19.0",
+        "@typescript-eslint/eslint-plugin": "^5.30.7",
+        "@typescript-eslint/parser": "^5.30.7",
+        "dotenv": "^16.0.1",
+        "eslint": "^8.20.0",
+        "eslint-config-prettier": "^8.5.0",
+        "eslint-plugin-prettier": "^4.2.1",
+        "hardhat": "^2.10.1",
+        "hardhat-gas-reporter": "^1.0.8",
+        "husky": "^8.0.1",
+        "joi": "^17.6.0",
+        "prettier": "^2.7.1",
+        "prettier-plugin-solidity": "^1.0.0-beta.24"
+    }
 }
