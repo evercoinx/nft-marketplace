@@ -45,11 +45,11 @@ $ npm install
 $ cp -vi .env.example .env
 
 # initialize the empty variables in the .env file with the corresponding values
-$ sed -r -i 's/^(ALCHEMY_API_KEY=)/\1<YOUR_ALCHEMY_API_KEY>/' .env
-$ sed -r -i 's/^(ETHERSCAN_API_KEY=)/\1<YOUR_ETHERSCAN_API_KEY>/' .env
-$ sed -r -i 's/^(TESTNET_SENDER_MNEMONIC=)/\1<YOUR_TESTNET_SENDER_MNEMONIC>/' .env
-$ sed -r -i 's/^(TESTNET_SENDER_PASSPHRASE=)/\1<YOUR_TESTNET_SENDER_PASSPHRASE_IF_ANY>/' .env
-$ sed -r -i 's/^(TESTNET_SENDER_ADDRESS=)/\1<YOUR_TESTNET_SENDER_ADDRESS>/' .env
+$ sed -i -r 's/^(ALCHEMY_API_KEY=)/\1<YOUR_ALCHEMY_API_KEY>/' .env
+$ sed -i -r 's/^(ETHERSCAN_API_KEY=)/\1<YOUR_ETHERSCAN_API_KEY>/' .env
+$ sed -i -r 's/^(TESTNET_SENDER_MNEMONIC=)/\1<YOUR_TESTNET_SENDER_MNEMONIC>/' .env
+$ sed -i -r 's/^(TESTNET_SENDER_PASSPHRASE=)/\1<YOUR_TESTNET_SENDER_PASSPHRASE_IF_ANY>/' .env
+$ sed -i -r 's/^(TESTNET_SENDER_ADDRESS=)/\1<YOUR_TESTNET_SENDER_ADDRESS>/' .env
 ```
 
 ### Format & Lint
@@ -73,6 +73,9 @@ $ npm run test:cover
 
 # run unit tests with a gas report
 $ npm run test:gas
+
+# run fuzz tests
+$ npm run test:fuzz
 ```
 
 ### Analyze
@@ -140,7 +143,7 @@ $ npm run deploy:opt-goerli
 
 ```bash
 # set the address of the marketplace contract
-$ sed -r -i 's/^(MARKETPLACE_ADDRESS=)/\1<YOUR_MARKETPLACE_ADDRESS>/' .env
+$ sed -i -r 's/^(MARKETPLACE_ADDRESS=)/\1<YOUR_MARKETPLACE_ADDRESS>/' .env
 
 # verify the contracts in ethereum's goerli network
 $ npm run verify:eth-goerli

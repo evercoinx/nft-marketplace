@@ -9,6 +9,8 @@
         "test": "hardhat test",
         "test:cover": "hardhat coverage",
         "test:gas": "REPORT_GAS=true hardhat test",
+        "pretest:fuzz": "docker pull trailofbits/eth-security-toolbox",
+        "test:fuzz": "docker run --rm -v $INIT_CWD:/share --entrypoint '' trailofbits/eth-security-toolbox echidna-test /share/contracts/TestMarketplace.sol --contract TestMarketplace --crytic-args '--solc-remaps @openzeppelin/=/share/node_modules/@openzeppelin/'",
         "preanalyze:mythril": "docker pull mythril/myth",
         "analyze:mythril": "docker run --rm -v $INIT_CWD:/share mythril/myth analyze /share/contracts/Marketplace.sol --solc-json /share/solc.json",
         "preanalyze:slither": "docker pull trailofbits/eth-security-toolbox",

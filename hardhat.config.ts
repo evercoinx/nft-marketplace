@@ -120,6 +120,7 @@ const config: HardhatUserConfig = {
             "ERC20",
             "ERC721",
             "EscrowUpgradeable",
+            "TestMarketplace",
             "TestMarketplaceV2",
             "TestFT",
             "TestNFT",
