@@ -138,8 +138,8 @@ const config: HardhatUserConfig = {
     paths: {
         sources: "./contracts",
         tests: "./test",
-        cache: "./.cache",
-        artifacts: "./.artifacts",
+        artifacts: "./artifacts",
+        cache: "./cache",
     },
     mocha: {
         timeout: 40000,

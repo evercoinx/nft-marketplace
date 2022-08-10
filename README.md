@@ -109,14 +109,21 @@ $ npm run compile
 $ npm run clean
 ```
 
-### Node & Console
+### Node
 
 ```bash
 # run the local node
 $ npm run node
+```
 
-# interract with the running local node
-$ npm run console
+### Console
+
+```bash
+# connect to the running local node
+$ npm run console:node
+
+# connect to the security toolbox
+$ npm run console:toolbox
 ```
 
 ### Deploy
