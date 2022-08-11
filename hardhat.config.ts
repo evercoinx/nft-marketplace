@@ -65,7 +65,11 @@ const config: HardhatUserConfig = {
     defaultNetwork: "hardhat",
     networks: {
         hardhat: {
-            chainId: 1337,
+            chainId: 31337,
+            forking: {
+                url: `https://eth-mainnet.alchemyapi.io/v2/${envVars.ALCHEMY_API_KEY}`,
+                blockNumber: 15319400,
+            },
         },
         localhost: {
             url: "http://127.0.0.1:8545",

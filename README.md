@@ -65,13 +65,13 @@ $ npm run lint
 ### Test
 
 ```bash
-# run unit tests
+# run integration tests
 $ npm run test
 
-# run unit tests with a coverage report
+# run integration tests with a coverage report
 $ npm run test:cover
 
-# run unit tests with a gas report
+# run integration tests with a gas report
 $ npm run test:gas
 
 # run fuzz tests
