@@ -9,8 +9,4 @@ import { Marketplace } from "./Marketplace.sol";
  */
 contract TestMarketplace is Marketplace {
     using CountersUpgradeable for CountersUpgradeable.Counter;
-
-    function echidna_true() public pure returns (bool) {
-        return true;
-    }
 }

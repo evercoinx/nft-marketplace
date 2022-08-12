@@ -86,13 +86,18 @@ contract Marketplace is
 
     /**
      * @dev The current listing fee. It can be changed through the `setListingFee` method.
+     *
+     * @custom:security write-protection="onlyOwner()"
      */
     uint256 public listingFee;
 
     /**
      * @dev The current withdrawal period. It can be changed through the `setWithdrawalPeriod`
      *  method.
+     *
+     * @custom:security write-protection="onlyOwner()"
      */
+
     uint256 public withdrawalPeriod;
 
     /**
@@ -109,6 +114,7 @@ contract Marketplace is
      * @dev The mapping between an NFT (identitifed as the NFT address + NFT id) and a listing at
      *  the marketplace.
      */
+    //slither-disable-next-line uninitialized-state
     mapping(IERC721 => mapping(uint256 => Listing)) private _tokenToListing;
 
     /*///////////////////////////////////////////////////////////////
@@ -216,6 +222,7 @@ contract Marketplace is
      *  period. For more information about intializers, see
      *  https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable#initializers.
      */
+    //slither-disable-next-line external-function
     function initialize(uint256 listingFee_, uint256 withdrawalPeriod_) public initializer {
         OwnableUpgradeable.__Ownable_init();
         PausableUpgradeable.__Pausable_init();
@@ -227,7 +234,7 @@ contract Marketplace is
     }
 
     /*///////////////////////////////////////////////////////////////
-			Token listing logic (list, delist, buy, update)
+            Token listing logic (list, delist, buy, update)
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -250,6 +257,8 @@ contract Marketplace is
      * @param price The desired price to sell the NFT at the marketplace.
      *
      * Emits a {TokenListed} event.
+     *
+     * @custom:security non-reentrant
      */
     function listToken(
         IERC721 tokenContract,
@@ -304,6 +313,8 @@ contract Marketplace is
      * @param tokenId The id of the NFT in the `tokenContract` contract.
      *
      * Emits a {TokenDelisted} event.
+     *
+     * @custom:security non-reentrant
      */
     function delistToken(IERC721 tokenContract, uint256 tokenId)
         external
@@ -339,6 +350,8 @@ contract Marketplace is
      * @param tokenId The id of the NFT in the `tokenContract` contract.
      *
      * Emits a {TokenBought} event.
+     *
+     * @custom:security non-reentrant
      */
     function buyToken(IERC721 tokenContract, uint256 tokenId)
         external
@@ -385,6 +398,8 @@ contract Marketplace is
      * @param tokenId The id of the NFT in the `tokenContract` contract.
      *
      * Emits a {TokenListed} event.
+     *
+     * @custom:security non-reentrant
      */
     function updateListing(
         IERC721 tokenContract,
@@ -405,7 +420,7 @@ contract Marketplace is
     }
 
     /*///////////////////////////////////////////////////////////////
-						Payment	withdrawal logic
+                        Payment	withdrawal logic
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -497,7 +512,7 @@ contract Marketplace is
     }
 
     /*///////////////////////////////////////////////////////////////
-								Getters
+                                Getters
     //////////////////////////////////////////////////////////////*/
 
     /**

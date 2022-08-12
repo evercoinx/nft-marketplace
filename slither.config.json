@@ -1,0 +1,6 @@
+{
+    "compile_force_framework": "hardhat",
+    "detectors_to_exclude": "incorrect-modifier,solc-version",
+    "filter_paths": "(@openzeppelin/|/Test)",
+    "solc_remaps": "@openzeppelin/=/share/node_modules/@openzeppelin/"
+}

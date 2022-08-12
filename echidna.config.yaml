@@ -1,0 +1,13 @@
+testMode: "assertion"
+testLimit: 50000
+cryticArgs:
+  - "--compile-force-framework"
+  - "hardhat"
+  - "--solc-remaps"
+  - "@openzeppelin/=/share/node_modules/@openzeppelin/"
+deployer: "0x30000"
+sender:
+  - "0x10000"
+  - "0x20000"
+  - "0x30000"
+corpusDir: "crytic-corpus"

@@ -9,6 +9,10 @@ ERC-721 standard. The smart contract exposes the following functionality to its 
 -   Update listing data
 -   Get listing data
 
+## Contract Description
+
+The marketplace contract description can be found [here](contracts/Marketplace.sol).
+
 ## Deployments
 
 ### Ethereum Goerli Testnet
@@ -65,13 +69,13 @@ $ npm run lint
 ### Test
 
 ```bash
-# run integration tests
+# run unit/integration tests
 $ npm run test
 
-# run integration tests with a coverage report
+# run unit/integration tests with a coverage report
 $ npm run test:cover
 
-# run integration tests with a gas report
+# run unit/integration tests with a gas report
 $ npm run test:gas
 
 # run fuzz tests
@@ -88,6 +92,13 @@ $ npm run analyze:mythril
 $ npm run analyze:slither
 ```
 
+### Clean
+
+```bash
+# clean up all the auxilliary directories (artifacts, caches etc)
+$ npm run clean
+```
+
 ### Flatten
 
 ```bash
@@ -100,13 +111,6 @@ $ npm run flatten
 ```bash
 # compile the contracts
 $ npm run compile
-```
-
-### Clean
-
-```bash
-# clean up the cache and contracts' artificats
-$ npm run clean
 ```
 
 ### Node

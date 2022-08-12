@@ -3,6 +3,8 @@
 artifacts
 cache
 coverage
+crytic-corpus
+crytic-export
 node_modules
 typechain
 typechain-types
