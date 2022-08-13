@@ -78,7 +78,7 @@ $ npm run test:cover
 # run unit/integration tests with a gas report
 $ npm run test:gas
 
-# run fuzz tests
+# run fuzz tests with echidna
 $ npm run test:fuzz
 ```
 
@@ -126,8 +126,8 @@ $ npm run node
 # connect to the running local node
 $ npm run console:node
 
-# connect to the security toolbox
-$ npm run console:toolbox
+# connect to the docker image with crytic's security toolset
+$ npm run console:crytic
 ```
 
 ### Deploy
